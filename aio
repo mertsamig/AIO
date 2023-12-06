@@ -61,13 +61,12 @@ content=$((($RAM*7/100)*1024/4))
 empty=$((($RAM*10/100)*1024/4))
 
 stop_services() {
-    services=("perfd" "mpdecision" "charge_logger" "vendor.perfservice" "vendor.cnss_diag" "vendor.tcpdump" "vendor.ipacm-diag" "perfservice" "cnss_diag" "tcpdump" "ipacm-diag" "statsd" "logd" "traced" "traced_probes" "idd-logreader" "idd-logreadermain" "statscompanion" "ramdump" "subsystem_ramdump" "logcat" "logcatd" "stats" "dumpstate" "aplogd" "wlan_logging")
-    for service in "${services[@]}"; do
-        kill_svc "$service"
-    done
-
-    rm -rf "/data/system/perfd/default_values" "/data/vendor/perfd/default_values" "/data/system/mcd/df" "/data/system/migt/migt"
-    log_i "Disabled few debug services and userspace daemons"
+    	services=("perfd" "mpdecision" "charge_logger" "vendor.perfservice" "vendor.cnss_diag" "vendor.tcpdump" "vendor.ipacm-diag" "perfservice" "cnss_diag" "tcpdump" "ipacm-diag" "statsd" "logd" "traced" "traced_probes" "idd-logreader" "idd-logreadermain" "statscompanion" "ramdump" "subsystem_ramdump" "logcat" "logcatd" "stats" "dumpstate" "aplogd" "wlan_logging")
+    	for service in "${services[@]}"; do
+        	kill_svc "$service"
+    	done
+    	rm -rf "/data/system/perfd/default_values" "/data/vendor/perfd/default_values" "/data/system/mcd/df" "/data/system/migt/migt"
+	log_i "Disabled few debug services and userspace daemons"
 }
 
 boost_tune() {
@@ -103,11 +102,10 @@ io_tune() {
 }
 
 cpu_tune() {
-	for cpu in /sys/devices/system/cpu/cpu*/cpufreq
-	do
+	for cpu in /sys/devices/system/cpu/cpu*/cpufreq; do
 		write "$cpu/scaling_governor" "schedutil"
 	done
-	for governor in $(find /sys/devices/system/cpu/ -name util -type d); do
+	for governor in $(find /sys/devices/system/cpu/ -name *util* -type d); do
 		write "$governor/up_rate_limit_us" "5000"
 		write "$governor/down_rate_limit_us" "5000"
 		write "$governor/pl" "1"
@@ -116,7 +114,6 @@ cpu_tune() {
 		write "$governor/hispeed_load" "90"
 		write "$governor/hispeed_freq" "4294967295"
 	done
-	
 	[[ -e "/sys/devices/system/cpu/cpuidle/use_deepest_state" ]] && {
 		write "/sys/devices/system/cpu/cpuidle/use_deepest_state" "1"
 		log_i "Allow CPUs to use it's deepest sleep state"
@@ -300,7 +297,7 @@ config_tcp() {
 	write "${tcp_v4}tcp_window_scaling" "1"
 	write "${tcp_v4}tcp_mtu_probing" "1"
 	write "${tcp_v4}tcp_slow_start_after_idle" "0"
-    write "/proc/sys/net/core/netdev_max_backlog" "16384"
+    	write "/proc/sys/net/core/netdev_max_backlog" "16384"
 	log_i "Applied TCP tweaks"
 }
 
@@ -390,20 +387,20 @@ disable_tb() {
 
 blkio() {
 	[[ -d "$bl" ]] && {
-    write "${bl}blkio.weight" "1000"
-    write "${bl}background/blkio.weight" "200"
-    write "${bl}blkio.group_idle" "2000"
-    write "${bl}background/blkio.group_idle" "0"
-    log_i "Tweaked blkio"
+    		write "${bl}blkio.weight" "1000"
+    		write "${bl}background/blkio.weight" "200"
+    		write "${bl}blkio.group_idle" "2000"
+    		write "${bl}background/blkio.group_idle" "0"
+    		log_i "Tweaked blkio"
 	}
 }
 
 unify_devfreq() {
-  for df in /sys/class/devfreq/*; do
-    write "$df/max_freq" "4294967295"
-    write "$df/min_freq" "0"
-  done
-  log_i "Tweaked devfreq"
+  	for df in /sys/class/devfreq/*; do
+    		write "$df/max_freq" "4294967295"
+    		write "$df/min_freq" "0"
+  	done
+  	log_i "Tweaked devfreq"
 }
 
 
@@ -422,53 +419,37 @@ props() {
 	resetprop -n persist.vendor.sys.modem.logging.enable false
 	resetprop -n sys.miui.ndcd off
 	resetprop -n sys.wifitracing.started 0
-	
 	resetprop -n ro.lmk.debug false
 	resetprop -n ro.lmk.log_stats false
-	
 	resetprop -n dalvik.vm.check-dex-sum false
 	resetprop -n dalvik.vm.checkjni false
 	resetprop -n dalvik.vm.dex2oat-minidebuginfo false
 	resetprop -n dalvik.vm.minidebuginfo false
-	
 	resetprop -n ro.sf.blurs_are_expensive 1
 	resetprop -n ro.surface_flinger.supports_background_blur 0
-	
 	resetprop -n ro.surface_flinger.enable_layer_caching true
 	resetprop -n debug.sf.layer_caching_active_layer_timeout_ms 1000
-	
 	resetprop -n debug.sf.latch_unsignaled 0
 	resetprop -n debug.sf.auto_latch_unsignaled 1
-	
 	resetprop -n debug.sf.predict_hwc_composition_strategy 0
-	
 	resetprop -n arm64.memtag.process.system_server off
-	
 	resetprop -n debug.sf.enable_hwc_vds 1
 	resetprop -n debug.sf.enable_layer_caching 1
 	resetprop -n persist.vendor.camera.realtimethread 1
-	
 	resetprop -n ro.cp_system_other_odex 1
-	
 	resetprop -n debug.hwui.renderer skiagl
 	resetprop -n debug.renderengine.backend skiaglthreaded
 	resetprop -n renderthread.skia.reduceopstasksplitting true
-	
 	resetprop -n ro.surface_flinger.max_frame_buffer_acquired_buffers 3
-	
 	resetprop -n sys.use_fifo_ui 1
-	
 	resetprop -n dalvik.vm.lockprof.threshold 250
 	resetprop -n persist.bg.dexopt.enable false 
-
 	resetprop -n debug.sf.treat_170m_as_sRGB 1
-
 	resetprop -n debug.hwui.skia_atrace_enabled false
 	resetprop -n zygote.critical_window.minute 10
 	resetprop -n ro.apk_verity.mode 2
 	resetprop -n debug.sf.frame_rate_multiple_threshold 120
 	resetprop -n debug.hwui.use_hint_manager true
-
 	resetprop -n wifi.supplicant_scan_interval 180
 	log_i "Applied prop tweaks"
 }
@@ -490,7 +471,6 @@ cmd_sys() {
 	cmd settings put system nearby_scanning_permission_allowed 0
 	cmd settings put system rakuten_denwa 0
 	cmd settings put system send_security_reports 0
-	
 	cmd device_config set_sync_disabled_for_tests persistent
 	cmd device_config put activity_manager max_cached_processes 256
 	cmd device_config put activity_manager max_phantom_processes 2147483647
@@ -504,17 +484,16 @@ cmd_sys() {
 	cmd device_config put activity_manager use_compaction true
 	cmd device_config put runtime_native_boot pin_camera false
 	cmd device_config put runtime_native use_app_image_startup_cache true
-	
 	cmd settings put system anr_debugging_mechanism 0
-    cmd looper_stats disable
-    cmd settings put global netstats_enabled 0
-    cmd power set-fixed-performance-mode-enabled true
-    cmd activity idle-maintenance
-    cmd thermalservice override-status 1
-    cmd device_config put runtime_native_boot disable_lock_profiling true
-    cmd device_config put runtime_native_boot iorap_readahead_enable true
-    cmd device_config put runtime_native_boot iorap_perfetto_enable true
-    cmd settings put global fstrim_mandatory_interval 3600
+	cmd looper_stats disable
+	cmd settings put global netstats_enabled 0
+	cmd power set-fixed-performance-mode-enabled true
+	cmd activity idle-maintenance
+    	cmd thermalservice override-status 1
+    	cmd device_config put runtime_native_boot disable_lock_profiling true
+    	cmd device_config put runtime_native_boot iorap_readahead_enable true
+    	cmd device_config put runtime_native_boot iorap_perfetto_enable true
+    	cmd settings put global fstrim_mandatory_interval 3600
 	cmd device_config put activity_manager use_oom_re_ranking true
 	log_i "Tweaked system properties"
 }
