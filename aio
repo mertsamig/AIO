@@ -107,7 +107,7 @@ cpu_tune() {
 	do
 		write "$cpu/scaling_governor" "schedutil"
 	done
-	for governor in $(find /sys/devices/system/cpu/ -name *util* -type d); do
+	for governor in $(find /sys/devices/system/cpu/ -name util -type d); do
 		write "$governor/up_rate_limit_us" "5000"
 		write "$governor/down_rate_limit_us" "5000"
 		write "$governor/pl" "1"
@@ -261,8 +261,6 @@ vm_lmk_tune() {
 	write "${vm}vfs_cache_pressure" "100"
 	write "${vm}extfrag_threshold" "750"
 	write "/sys/module/process_reclaim/parameters/enable_process_reclaim" "1"
-	write "/sys/module/process_reclaim/parameters/pressure_max" "512"
-	write "/sys/module/process_reclaim/parameters/per_swap_size" "1024"
 	write "${vm}swap_ratio" "100"
 	write "${vm}oom_dump_tasks" "0"
 	write "${vm}block_dump" "0"
@@ -410,97 +408,31 @@ unify_devfreq() {
 
 
 props() {
-	resetprop -n av.debug.disable.pers.cache true
-	resetprop -n config.disable_rtt true
-	resetprop -n config.stats 0
 	resetprop -n db.log.slow_query_threshold 0
-	resetprop -n debug.atrace.tags.enableflags false
-	resetprop -n debug.egl.profiler 0
-	resetprop -n debug.enable.gamed false
-	resetprop -n debug.enable.wl_log false
-	resetprop -n debug.hwc.otf 0
-	resetprop -n debug.hwc_dump_en 0
+	resetprop -n debug.atrace.tags.enableflags 0
 	resetprop -n debug.mdpcomp.logs 0
-	resetprop -n debug.qualcomm.sns.daemon 0
-	resetprop -n debug.qualcomm.sns.libsensor1 0
-	resetprop -n debug.sf.ddms 0
 	resetprop -n debug.sf.disable_client_composition_cache 1
 	resetprop -n debug.sf.dump 0
-	resetprop -n debug_test 0
 	resetprop -n libc.debug.malloc 0
-	resetprop -n log.shaders 0
-	resetprop -n log.tag.all 0
-	resetprop -n log.tag.stats_log OFF
-	resetprop -n log_frame_info 0
-	resetprop -n logd.logpersistd.enable false
-	resetprop -n logd.statistics 0
-	resetprop -n media.metrics.enabled false
-	resetprop -n media.metrics 0
-	resetprop -n media.stagefright.log-uri 0
-	resetprop -n persist.anr.dumpthr 0
-	resetprop -n persist.data.qmi.adb_logmask 0
-	resetprop -n persist.debug.sensors.hal 0 
-	resetprop -n persist.debug.wfd.enable false
-	resetprop -n persist.ims.disableADBLogs true
-	resetprop -n persist.ims.disabled true
-	resetprop -n persist.ims.disableDebugLogs true
-	resetprop -n persist.ims.disableIMSLogs true
-	resetprop -n persist.ims.disableQXDMLogs true
-	resetprop -n persist.logd.limit OFF
-	resetprop -n persist.logd.size.crash OFF
-	resetprop -n persist.logd.size.radio OFF
-	resetprop -n persist.logd.size.system OFF
-	resetprop -n persist.logd.size OFF
-	resetprop -n persist.oem.dump 0
-	resetprop -n persist.service.logd.enable false
-	resetprop -n persist.sys.perf.debug false
-	resetprop -n persist.sys.ssr.enable_debug false
-	resetprop -n persist.sys.ssr.restart_level 1
-	resetprop -n persist.sys.strictmode.disable true
-	resetprop -n persist.traced.enable false
-	resetprop -n persist.traced_perf.enable false
-	resetprop -n persist.vendor.crash.cnt 0
-	resetprop -n persist.vendor.crash.detect false
+	resetprop -n media.metrics.enabled 0
+	resetprop -n media.stagefright.log-uri false
+	resetprop -n persist.debug.wfd.enable 0
+	resetprop -n persist.sys.strictmode.disable 1
 	resetprop -n persist.vendor.radio.adb_log_on 0
-	resetprop -n persist.vendor.radio.snapshot_enabled false
-	resetprop -n persist.vendor.radio.snapshot_timer 0
 	resetprop -n persist.vendor.sys.modem.logging.enable false
-	resetprop -n persist.vendor.sys.reduce_qdss_log 1
-	resetprop -n persist.vendor.verbose_logging_enabled false
-	resetprop -n persist.wpa_supplicant.debug false
-	resetprop -n ro.config.nocheckin 1
-	resetprop -n ro.debuggable 0
-	resetprop -n ro.kernel.android.checkjni 0
-	resetprop -n ro.logd.kernel false
-	resetprop -n ro.logd.size.stats OFF
-	resetprop -n ro.logd.size OFF
-	resetprop -n ro.logdumpd.enabled false
-	resetprop -n ro.statsd.enable false
-	resetprop -n ro.vendor.connsys.dedicated.log 0
-	resetprop -n rw.logger 0
-	resetprop -n sys.miui.ndcd 0
+	resetprop -n sys.miui.ndcd off
 	resetprop -n sys.wifitracing.started 0
-	resetprop -n vendor.vidc.debug.level 0
-	resetprop -n vidc.debug.level 0
 	
 	resetprop -n ro.lmk.debug false
 	resetprop -n ro.lmk.log_stats false
 	
-	resetprop -n dalvik.gc.type precise
 	resetprop -n dalvik.vm.check-dex-sum false
 	resetprop -n dalvik.vm.checkjni false
 	resetprop -n dalvik.vm.dex2oat-minidebuginfo false
 	resetprop -n dalvik.vm.minidebuginfo false
-	resetprop -n dalvik.vm.verify-bytecode false
 	
-	resetprop -n disableBlurs true
-	resetprop -n enable_blurs_on_windows 0
-	resetprop -n persist.sys.sf.disable_blurs true
-	resetprop -n ro.launcher.blur.appLaunch 0
 	resetprop -n ro.sf.blurs_are_expensive 1
 	resetprop -n ro.surface_flinger.supports_background_blur 0
-	
-	#
 	
 	resetprop -n ro.surface_flinger.enable_layer_caching true
 	resetprop -n debug.sf.layer_caching_active_layer_timeout_ms 1000
@@ -513,12 +445,8 @@ props() {
 	resetprop -n arm64.memtag.process.system_server off
 	
 	resetprop -n debug.sf.enable_hwc_vds 1
-	resetprop -n debug.sf.enable_layer_caching true
-	resetprop -n persist.vendor.tcpdump.log.alwayson false
+	resetprop -n debug.sf.enable_layer_caching 1
 	resetprop -n persist.vendor.camera.realtimethread 1
-	resetprop -n persist.camera.managebuffer.enable 1
-	
-	resetprop -n ro.vendor.perf.scroll_opt true
 	
 	resetprop -n ro.cp_system_other_odex 1
 	
@@ -526,14 +454,7 @@ props() {
 	resetprop -n debug.renderengine.backend skiaglthreaded
 	resetprop -n renderthread.skia.reduceopstasksplitting true
 	
-	resetprop -n persist.sys.scrollingcache 2
-	
 	resetprop -n ro.surface_flinger.max_frame_buffer_acquired_buffers 3
-	
-	resetprop -n debug.cpurend.vsync false
-	
-	resetprop -n debug.egl.hw 1
-	resetprop -n video.accelerate.hw 1
 	
 	resetprop -n sys.use_fifo_ui 1
 	
@@ -541,35 +462,14 @@ props() {
 	resetprop -n persist.bg.dexopt.enable false 
 
 	resetprop -n debug.sf.treat_170m_as_sRGB 1
-	resetprop -n debug.sf.enable_advanced_sf_phase_offset 1
 
-	resetprop -n vendor.display.disable_rotator_downscale 1
 	resetprop -n debug.hwui.skia_atrace_enabled false
 	resetprop -n zygote.critical_window.minute 10
-	resetprop -n vendor.display.use_smooth_motion 1
-	resetprop -n vendor.audio.offload.buffer.size.kb 256
-	resetprop -n ro.telephony.block_binder_thread_on_incoming_calls false
 	resetprop -n ro.apk_verity.mode 2
-	resetprop -n vendor.audio_hal.period_multiplier 2
-	resetprop -n vendor.audio.adm.buffering.ms 2
-	resetprop -n debug.gralloc.enable_fb_ubwc 1
-	resetprop -n persist.vendor.radio.add_power_save 0
-	resetprop -n persist.vendor.ssr.restart_level ALL_ENABLE
-	
-	resetprop -n debug.adreno.disable_backend_affinity true
 	resetprop -n debug.sf.frame_rate_multiple_threshold 120
 	resetprop -n debug.hwui.use_hint_manager true
-	
-	resetprop -n ro.vendor.qti.sys.fw.bg_apps_limit 128
-	resetprop -n ro.vendor.qti.sys.fw.bservice_enable true
-	resetprop -n ro.vendor.qti.sys.fw.bservice_age 10000
-	resetprop -n ro.vendor.qti.sys.fw.bservice_limit 128
 
-	resetprop -n lmk.autocalc false
-	resetprop -n ro.lmk.use_minfree_levels true
 	resetprop -n wifi.supplicant_scan_interval 180
-	resetprop -n debug.composition.type gpu
-	resetprop -n persist.sys.composition.type gpu
 	log_i "Applied prop tweaks"
 }
 
@@ -624,8 +524,9 @@ bourbon() {
 	for process in "${processes[@]}"; do
 	    renice -n -20 -p "$(pgrep "$process")"
 	done
-	pkg_nm="$(pm resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME | grep packageName | head -1 | cut -d= -f2)"
-	processes=("com.android.systemui" "android.process.acore" "$pkg_nm")
+	home="$(pm resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME | grep packageName | head -1 | cut -d= -f2)"
+	ime="$(ime list | grep packageName | head -1 | cut -d= -f2)"
+	processes=("com.android.systemui" "android.process.acore" "$home" "$ime")
 	for process in "${processes[@]}"; do
 	    renice -n -20 -p "$(pidof "$process")"
 	done
