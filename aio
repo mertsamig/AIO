@@ -61,11 +61,11 @@ content=$((($RAM*7/100)*1024/4))
 empty=$((($RAM*10/100)*1024/4))
 
 stop_services() {
-    	services=("perfd" "mpdecision" "charge_logger" "vendor.perfservice" "vendor.cnss_diag" "vendor.tcpdump" "vendor.ipacm-diag" "perfservice" "cnss_diag" "tcpdump" "ipacm-diag" "statsd" "logd" "traced" "traced_probes" "idd-logreader" "idd-logreadermain" "statscompanion" "ramdump" "subsystem_ramdump" "logcat" "logcatd" "stats" "dumpstate" "aplogd" "wlan_logging")
-    	for service in "${services[@]}"; do
-        	kill_svc "$service"
-    	done
-    	rm -rf "/data/system/perfd/default_values" "/data/vendor/perfd/default_values" "/data/system/mcd/df" "/data/system/migt/migt"
+	services=("perfd" "mpdecision" "charge_logger" "vendor.perfservice" "vendor.cnss_diag" "vendor.tcpdump" "vendor.ipacm-diag" "perfservice" "cnss_diag" "tcpdump" "ipacm-diag" "statsd" "logd" "traced" "traced_probes" "idd-logreader" "idd-logreadermain" "statscompanion" "ramdump" "subsystem_ramdump" "logcat" "logcatd" "stats" "dumpstate" "aplogd" "wlan_logging")
+	for service in "${services[@]}"; do
+    	kill_svc "$service"
+	done
+	rm -rf "/data/system/perfd/default_values" "/data/vendor/perfd/default_values" "/data/system/mcd/df" "/data/system/migt/migt"
 	log_i "Disabled few debug services and userspace daemons"
 }
 
@@ -297,7 +297,7 @@ config_tcp() {
 	write "${tcp_v4}tcp_window_scaling" "1"
 	write "${tcp_v4}tcp_mtu_probing" "1"
 	write "${tcp_v4}tcp_slow_start_after_idle" "0"
-    	write "/proc/sys/net/core/netdev_max_backlog" "16384"
+	write "/proc/sys/net/core/netdev_max_backlog" "16384"
 	log_i "Applied TCP tweaks"
 }
 
@@ -387,20 +387,20 @@ disable_tb() {
 
 blkio() {
 	[[ -d "$bl" ]] && {
-    		write "${bl}blkio.weight" "1000"
-    		write "${bl}background/blkio.weight" "200"
-    		write "${bl}blkio.group_idle" "2000"
-    		write "${bl}background/blkio.group_idle" "0"
-    		log_i "Tweaked blkio"
+		write "${bl}blkio.weight" "1000"
+		write "${bl}background/blkio.weight" "200"
+		write "${bl}blkio.group_idle" "2000"
+		write "${bl}background/blkio.group_idle" "0"
+		log_i "Tweaked blkio"
 	}
 }
 
 unify_devfreq() {
-  	for df in /sys/class/devfreq/*; do
-    		write "$df/max_freq" "4294967295"
-    		write "$df/min_freq" "0"
-  	done
-  	log_i "Tweaked devfreq"
+	for df in /sys/class/devfreq/*; do
+		write "$df/max_freq" "4294967295"
+		write "$df/min_freq" "0"
+	done
+	log_i "Tweaked devfreq"
 }
 
 
@@ -489,17 +489,17 @@ cmd_sys() {
 	cmd settings put global netstats_enabled 0
 	cmd power set-fixed-performance-mode-enabled true
 	cmd activity idle-maintenance
-    	cmd thermalservice override-status 1
-    	cmd device_config put runtime_native_boot disable_lock_profiling true
-    	cmd device_config put runtime_native_boot iorap_readahead_enable true
-    	cmd device_config put runtime_native_boot iorap_perfetto_enable true
-    	cmd settings put global fstrim_mandatory_interval 3600
+	cmd thermalservice override-status 1
+	cmd device_config put runtime_native_boot disable_lock_profiling true
+	cmd device_config put runtime_native_boot iorap_readahead_enable true
+	cmd device_config put runtime_native_boot iorap_perfetto_enable true
+	cmd settings put global fstrim_mandatory_interval 3600
 	cmd device_config put activity_manager use_oom_re_ranking true
 	log_i "Tweaked system properties"
 }
 
 bourbon() {
-	processes=("rcu_sched" "writeback" "system" "zygote" "system_server" "surfaceflinger" "netd")
+	processes=("rcu_sched" "writeback" "system" "zygote" "system_server" "surfaceflinger" "netd" "kblockd" "kgsl" "composer" "mdss")
 	for process in "${processes[@]}"; do
 	    renice -n -20 -p "$(pgrep "$process")"
 	done
