@@ -1,0 +1,48 @@
+#!/system/bin/sh
+
+
+
+sync
+rm -rf \
+    /data/*/*/shared_prefs/com.crashlytics.prefs.xml \
+    /data/*/*/shared_prefs/com.google.android.gms.measurement.prefs.xml \
+    /data/*/*/shared_prefs/com.google.android.gms.analytics.prefs.xml \
+    /data/*/*/shared_prefs/com.google.firebase.crashlytics.xml \
+    /data/*/*/shared_prefs/admob.xml \
+    /data/*/*/shared_prefs/FBAdPrefs.xml \
+    /data/*/*/shared_prefs/crash_report.xml \
+    /data/*/*/shared_prefs/analyticsprefs.xml \
+    /data/system/dropbox/* \
+    /data/*.log \
+    /data/local/tmp/* \
+    /data/vendor/wlan_logs/* \
+    /data/anr/* \
+    /data/data/*/cache \
+    /data/user/0/*/cache \
+    /data/user_de/0/*/cache \
+    /data/tombstones/* \
+    /data/backup/pending/* \
+    /cache/* \
+    /data/cache/* \
+    /data/media/0/Android/data/*/cache/* \
+    /data/vendor/wlan_logs \
+    /data/local/*.apk \
+    /data/mlog/* \
+    /data/media/0/LOST.DIR \
+    /data/media/0/found000 \
+    /data/media/0/LazyList \
+    /data/media/0/albumthumbs \
+    /data/media/0/kunlun \
+    /data/media/0/.CacheOfEUI \
+    /data/media/0/.bstats \
+    /data/media/0/.taobao \
+    /data/media/0/MIUI/debug_log \
+    /data/media/0/ramdump \
+    /data/media/0/UnityAdsVideoCache \
+    /data/media/0/*.CHK \
+    /data/media/0/duilite \
+    /data/media/0/DkMiBrowserDemo \
+    /data/media/0/.xlDownload \
+    /data/data/com.whatsapp/files/Logs/whatsapp.log \
+    /data/data/com.myinsta.android/app_analytics/*
+
