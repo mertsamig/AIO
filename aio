@@ -50,6 +50,7 @@ fs="/proc/sys/fs/"
 gpu="/sys/class/kgsl/kgsl-3d0/"
 dbg="/sys/kernel/debug/sched_features"
 stune="/dev/stune/"
+bl="/dev/blkio/"
 
 RAM=$(free -m | awk '/Mem:/{print $2}')
 front=$((($RAM*2/100)*1024/4))
@@ -67,6 +68,27 @@ stop_services() {
 
     rm -rf "/data/system/perfd/default_values" "/data/vendor/perfd/default_values" "/data/system/mcd/df" "/data/system/migt/migt"
     log_i "Disabled few debug services and userspace daemons"
+}
+
+boost_tune() {
+	[[ -e "/sys/module/cpu_boost/parameters/dynamic_stune_boost" ]] && {
+		write "/sys/module/cpu_boost/parameters/dynamic_stune_boost" "0"
+		log_i "Disabled dynamic stune boost"
+	}
+	[[ -d "/sys/module/cpu_boost/" ]] && {
+		write "/sys/module/cpu_boost/parameters/input_boost_enabled" "0"
+		write "/sys/module/cpu_boost/parameters/sched_boost_on_input" "0"
+		write "/sys/module/cpu_boost/parameters/sched_boost_on_powerkey_input" "0"
+		log_i "Disabled CAF CPU input boost"
+	}
+	[[ -d "/sys/module/cpu_input_boost/" ]] && {
+		write "/sys/module/cpu_input_boost/parameters/input_boost_duration" "0"
+		log_i "Disabled CPU input boost"
+	}
+	write "/sys/devices/system/cpu/sched/sched_boost" "0"
+	write "${kernel}slide_boost_enabled" "0"
+	write "${kernel}launcher_boost_enabled" "0"
+	write "/sys/kernel/tracing/events/sched/sched_boost_cpu" "0"
 }
 
 io_tune() {
@@ -207,6 +229,15 @@ sched_tune() {
 	write "${kernel}hung_task_timeout_secs" "0"
 	write "${kernel}sched_conservative_pl" "0"
 	write "${kernel}sched_initial_task_util" "0"
+	write "/sys/devices/system/cpu/cpufreq/hotplug/cpu_hotplug_disable" "1"
+	write "/sys/kernel/debug/debug_enabled" "0"
+	write "/sys/kernel/debug/msm_vidc/disable_thermal_mitigation" "0"
+	write "/sys/kernel/debug/msm_vidc/fw_low_power_mode" "1"
+	write "/sys/kernel/rcu_expedited" "0"
+	write "/sys/kernel/rcu_normal" "1"
+	write "/sys/devices/system/cpu/sched/hint_enable" "0"
+	write "/proc/sys/dev/tty/ldisc_autoload" "0"
+	write "/sys/power/pm_freeze_timeout" "1000"
 	log_i "Tweaked various kernel parameters to a better overall performance"
 }
 
@@ -242,10 +273,11 @@ vm_lmk_tune() {
 	write "${lmk}cost" "32"
 	#write "${lmk}adj" "0,64,128,256,512,1024"
 	write "${lmk}minfree" "$front,$visible,$Second,$Hidden,$content,$empty"
-	#write "${vm}min_free_kbytes" "16384"
-	#write "${vm}extra_free_kbytes" "16384"
+	write "${vm}min_free_kbytes" "16384"
+	write "${vm}extra_free_kbytes" "16384"
 	write "${vm}swappiness" "100"
 	write "${vm}reap_mem_on_sigkill" "1"
+	write "/sys/kernel/mm/lru_gen/min_ttl_ms" "1000"
 	log_i "Tweaked various VM and LMK parameters for a improved user-experience"
 }
 
@@ -357,6 +389,25 @@ disable_tb() {
 		log_i "Disabled pnpmgr touch boost"
 	}
 }
+
+blkio() {
+	[[ -d "$bl" ]] && {
+    write "${bl}blkio.weight" "1000"
+    write "${bl}background/blkio.weight" "200"
+    write "${bl}blkio.group_idle" "2000"
+    write "${bl}background/blkio.group_idle" "0"
+    log_i "Tweaked blkio"
+	}
+}
+
+unify_devfreq() {
+  for df in /sys/class/devfreq/*; do
+    write "$df/max_freq" "4294967295"
+    write "$df/min_freq" "0"
+  done
+  log_i "Tweaked devfreq"
+}
+
 
 props() {
 	resetprop -n av.debug.disable.pers.cache true
@@ -595,6 +646,7 @@ disable_debug
 stop_services
 io_tune
 boost_tune
+unify_devfreq
 cpu_tune
 gpu_tune
 schedtune_tune
@@ -607,6 +659,7 @@ pm2_idle_mode
 ufs_perf_mode
 emmc_clk_scl
 kern_pwrsave
+blkio
 cmd_sys
 props
 bourbon
