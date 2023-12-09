@@ -22,7 +22,6 @@ objects=(
 	"libdl.so"
 	"libdl_android.so"
 )
-
 for object in "${objects[@]}"; do
 	vmtouch -dlvwf "/apex/com.android.runtime/lib64/bionic/$object"
 done
@@ -47,22 +46,52 @@ objects=(
 	"libsurfaceflinger.so"
 	"libblas.so" 
 	"liblzma.so" 
-	"libunwindstack.so"
 	"ld-android.so"
 	"libnetd_client.so"
 	"libcutils.so"
 	"libutils.so"
-	"liblog.so"
 	"libsqlite.so"
 	"libasyncio.so"
-	"libbacktrace.so"
 	"libcrypto.so"
 	"libhidlbase.so"
 	"libmedia.so"
+	"libvndksupport.so"
+	"libziparchive.so"
+	"libnativedisplay.so"
+	"libbinder_ndk.so"
+	"libcgrouprc.so"
+	"libpcre2.so"
+	"libprocessgroup.so"
+	"libhardware.so"
+	"libprotobuf-cpp-lite.so"
+	"libprotobuf-cpp-full.so"
+	"libnativewindow.so"
+	"libvintf.so"
+	"libmediautils.so"
+	"libsensor.so"
+	"liblz4.so"
+	"libappfuse.so"
+	"libvulkan.so"
+	"libcameraservice.so"
 )
-
 for object in "${objects[@]}"; do
 	vmtouch -dlvwf "/system/lib64/$object"
+done
+
+objects=(
+	"sensors.ssc.so"
+	"libCB.so"
+	"libgsl.so"
+	"libgui_vendor.so"
+	"libgpudataproducer.so"
+	"libdpps.so"
+	"libadreno_utils.so"
+	"libcamxexternalformatutils.so"
+	"libipebpsstriping.so"
+	"libipebpsstriping170.so"
+)
+for object in "${objects[@]}"; do
+	vmtouch -dlvwf "/vendor/lib64/$object"
 done
 
 objects=(
@@ -70,10 +99,11 @@ objects=(
 	"surfaceflinger"
 	"linker64"
 )
-
 for object in "${objects[@]}"; do
 	vmtouch -dlvwf "/system/bin/$object"
 done
+
+vmtouch -dlvwf "$(pm path com.android.systemui | head -1 | cut -d: -f2)"
 
 
 log_i "FSCC - Filesystem optimizer
