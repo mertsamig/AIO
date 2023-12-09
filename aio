@@ -92,10 +92,35 @@ boost_tune() {
 
 io_tune() {
 	for queue in /sys/block/*/queue/; do
+		avail_scheds=`cat "${queue}scheduler"`
+		for sched in bfq cfq noop none; do
+			if [[ "$avail_scheds" == *"$sched"* ]]
+			then
+				write "${queue}scheduler" "$sched"
+				break
+			fi
+		done
 		write "${queue}add_random" "0"
 		write "${queue}iostats" "0"
 		write "${queue}io_poll" "0"
 		write "${queue}nr_requests" "128"
+	done
+	for queue in /sys/block/m*/queue/; do
+		write "${queue}read_ahead_kb" "512"
+	done	
+	for queue in /sys/block/l*/queue/; do
+		write "${queue}read_ahead_kb" "256"
+	done
+	for queue in /sys/block/s*/queue/; do
+		write "${queue}read_ahead_kb" "128"
+	done
+	for queue in /sys/block/d*/queue/; do
+		write "${queue}read_ahead_kb" "128"
+	done
+	for queue in /sys/block/ram*/queue/; do
+		write "${queue}read_ahead_kb" "128"
+	done
+	for queue in /sys/block/zram*/queue/; do
 		write "${queue}read_ahead_kb" "128"
 	done
 	log_i "Tweaked I/O scheduler"
@@ -106,11 +131,11 @@ cpu_tune() {
 		write "$cpu/scaling_governor" "schedutil"
 	done
 	for governor in $(find /sys/devices/system/cpu/ -name *util* -type d); do
-		write "$governor/up_rate_limit_us" "5000"
-		write "$governor/down_rate_limit_us" "5000"
+		write "$governor/up_rate_limit_us" "500"
+		write "$governor/down_rate_limit_us" "20000"
 		write "$governor/pl" "1"
 		write "$governor/iowait_boost_enable" "1"
-		write "$governor/rate_limit_us" "5000"
+		write "$governor/rate_limit_us" "20000"
 		write "$governor/hispeed_load" "90"
 		write "$governor/hispeed_freq" "4294967295"
 	done
@@ -150,7 +175,7 @@ disable_crypto_tests() {
 }
 
 schedtune_tune() {
-	write "${stune}background/schedtune.boost" "0"
+	write "${stune}background/schedtune.boost" "-1"
 	write "${stune}background/schedtune.prefer_idle" "0"
 	write "${stune}background/schedtune.sched_boost" "0"
 	write "${stune}foreground/schedtune.boost" "0"
@@ -163,7 +188,7 @@ schedtune_tune() {
 	write "${stune}camera-daemon/schedtune.prefer_idle" "1"
 	write "${stune}camera-daemon/schedtune.sched_boost" "0"
 	write "${stune}top-app/schedtune.boost" "1"
-	write "${stune}top-app/schedtune.prefer_idle" "1"
+	write "${stune}top-app/schedtune.prefer_idle" "0"
 	write "${stune}top-app/schedtune.sched_boost" "0"
 	write "${stune}schedtune.boost" "0"
 	write "${stune}schedtune.prefer_idle" "0"
@@ -174,7 +199,7 @@ schedtune_tune() {
 config_fs() {
 	[[ -d "$fs" ]] && {
 		write "${fs}dir-notify-enable" "0"
-		write "${fs}lease-break-time" "15"
+		write "${fs}lease-break-time" "10"
 		write "${fs}leases-enable" "1"
 		log_i "Tweaked FS"
 	}
@@ -234,8 +259,32 @@ sched_tune() {
 	write "/sys/kernel/rcu_normal" "1"
 	write "/sys/devices/system/cpu/sched/hint_enable" "0"
 	write "/proc/sys/dev/tty/ldisc_autoload" "0"
-	write "/sys/power/pm_freeze_timeout" "1000"
+	write "${kernel}random/read_wakeup_threshold" "64"
+	write "${kernel}random/write_wakeup_threshold" "256"
 	log_i "Tweaked various kernel parameters to a better overall performance"
+}
+
+cpu_set() {
+	for cpu_set in /dev/cpuset; do
+	    write "$cpu_set/cpus" "0-7"
+	    write "$cpu_set/effective_cpus" "0-7"
+	    write "$cpu_set/background/cpus" "0-1"
+	    write "$cpu_set/background/effective_cpus" "0-1"
+	    write "$cpu_set/system-background/cpus" "0-2"
+	    write "$cpu_set/system-background/effective_cpus" "0-2"
+	    write "$cpu_set/foreground/cpus" "0-7"
+	    write "$cpu_set/foreground/effective_cpus" "0-7"
+	    write "$cpu_set/top-app/cpus" "0-7"
+	    write "$cpu_set/top-app/effective_cpus" "0-7"
+	    write "$cpu_set/restricted/cpus" "0-1"
+	    write "$cpu_set/restricted/effective_cpus" "0-3"
+	    write "$cpu_set/camera-daemon/cpus" "0-3"
+	    write "$cpu_set/camera-daemon/effective_cpus" "0-3"
+	    write "$cpu_set/camera-daemon-dedicated/cpus" "0-3"
+	    write "$cpu_set/camera-daemon-dedicated/effective_cpus" "0-3"
+	    write "$cpu_set/audio-app/cpus" "0-1"
+	done
+	log_i "Tweaked cpusets"
 }
 
 fp_boost() {
@@ -268,8 +317,8 @@ vm_lmk_tune() {
 	write "${lmk}cost" "32"
 	#write "${lmk}adj" "0,64,128,256,512,1024"
 	write "${lmk}minfree" "$front,$visible,$Second,$Hidden,$content,$empty"
-	write "${vm}min_free_kbytes" "16384"
-	write "${vm}extra_free_kbytes" "16384"
+	write "${vm}min_free_kbytes" "8192"
+	write "${vm}extra_free_kbytes" "32768"
 	write "${vm}swappiness" "100"
 	write "${vm}reap_mem_on_sigkill" "1"
 	write "/sys/kernel/mm/lru_gen/min_ttl_ms" "1000"
@@ -284,6 +333,14 @@ pewq() {
 }
 
 config_tcp() {
+	avail_con=`cat "${tcp}tcp_available_congestion_control"`
+	for con in bbr2 bbr westwood; do
+		if [[ "$avail_con" == *"$con"* ]]
+		then
+			write "${tcp_v4}tcp_congestion_control" "$con"
+			break
+		fi
+	done
 	write "${tcp_v4}ip_no_pmtu_disc" "0"
 	write "${tcp_v4}tcp_ecn" "1"
 	write "${tcp_v4}tcp_timestamps" "0"
@@ -298,6 +355,7 @@ config_tcp() {
 	write "${tcp_v4}tcp_mtu_probing" "1"
 	write "${tcp_v4}tcp_slow_start_after_idle" "0"
 	write "/proc/sys/net/core/netdev_max_backlog" "16384"
+	write "/proc/sys/net/core/netdev_tstamp_prequeue" "0"
 	log_i "Applied TCP tweaks"
 }
 
@@ -388,7 +446,7 @@ disable_tb() {
 blkio() {
 	[[ -d "$bl" ]] && {
 		write "${bl}blkio.weight" "1000"
-		write "${bl}background/blkio.weight" "200"
+		write "${bl}background/blkio.weight" "150"
 		write "${bl}blkio.group_idle" "2000"
 		write "${bl}background/blkio.group_idle" "0"
 		log_i "Tweaked blkio"
@@ -451,6 +509,32 @@ props() {
 	resetprop -n debug.sf.frame_rate_multiple_threshold 120
 	resetprop -n debug.hwui.use_hint_manager true
 	resetprop -n wifi.supplicant_scan_interval 180
+	
+	resetprop -n arm64.memtag.process.statsd off
+	resetprop -n ro.hwui.drop_shadow_cache_size 26
+	resetprop -n ro.hwui.layer_cache_size 130
+	resetprop -n ro.hwui.path_cache_size 52
+	resetprop -n ro.hwui.r_buffer_cache_size 26
+	resetprop -n ro.hwui.texture_cache_size 267
+	resetprop -n dalvik.vm.check-dirtyWriteback-sum false
+	resetprop -n dalvik.vm.verify-bytecode false
+	resetprop -n debug.cpurend.vsync false
+	resetprop -n debug.egl.hw 1
+	resetprop -n debug.force_rtl false
+	resetprop -n debug.hwui.profile true
+	resetprop -n debug.sf.late.app.duration 16600000
+	resetprop -n debug.sf.late.sf.duration 10500000
+	resetprop -n debug.sf.recomputecrop 0
+	resetprop -n hwui.disable_vsync true
+	resetprop -n persist.sys.ssr.enable_ramdumps 0
+	resetprop -n ro.ril.enable.dtm 1
+	resetprop -n ro.ril.hsdpa.category 27
+	resetprop -n ro.ril.hsupa.category 7
+	resetprop -n ro.ril.hsxpa 2
+	resetprop -n touch.pressure.scale 0.3
+	resetprop -n debug.composition.type gpu
+	resetprop -n persist.sys.composition.type gpu
+
 	log_i "Applied prop tweaks"
 }
 
@@ -499,13 +583,30 @@ cmd_sys() {
 }
 
 bourbon() {
-	processes=("rcu_sched" "writeback" "system" "zygote" "system_server" "surfaceflinger" "netd" "kblockd" "kgsl" "composer" "mdss")
+	processes=(
+		"rcu_sched" 
+		"writeback" 
+		"system" 
+		"zygote" 
+		"system_server" 
+		"surfaceflinger" 
+		"netd" 
+		"kblockd" 
+		"kgsl" 
+		"composer" 
+		"mdss"
+	)
 	for process in "${processes[@]}"; do
 	    renice -n -20 -p "$(pgrep "$process")"
 	done
 	home="$(pm resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME | grep packageName | head -1 | cut -d= -f2)"
 	ime="$(ime list | grep packageName | head -1 | cut -d= -f2)"
-	processes=("com.android.systemui" "android.process.acore" "$home" "$ime")
+	processes=(
+		"com.android.systemui" 
+		"android.process.acore" 
+		"$home" 
+		"$ime"
+	)
 	for process in "${processes[@]}"; do
 	    renice -n -20 -p "$(pidof "$process")"
 	done
@@ -528,6 +629,7 @@ io_tune
 boost_tune
 unify_devfreq
 cpu_tune
+cpu_set
 gpu_tune
 schedtune_tune
 sched_tune
@@ -542,7 +644,7 @@ kern_pwrsave
 blkio
 cmd_sys
 props
-bourbon
+#bourbon
 
 log_i "Tweaks applied. Enjoy!"
 exit=$(date +%s)

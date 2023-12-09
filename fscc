@@ -2,36 +2,77 @@
 
 
 
-fscc_log="/data/media/0/aio/fscc.log"
+fscc_log="/sdcard/aio/fscc.log"
 
 log_i() {
 	echo "[$(date +'%Y-%m-%d %T')]: [*] $1" >"$fscc_log"
 	echo "" >> "$fscc_log"
 }
 
-(pkill -KILL vmtouch)
+pkill -KILL vmtouch
 
 fscc_status() {
 	sleep 2
 	[[ "$(pgrep -f "vmtouch")" ]] && echo "Running $(cat /proc/meminfo | grep Mlocked | cut -d: -f2 | tr -d ' ') in cache." || echo "Not running."
 }
 
-objects=("libc.so" "libm.so" "libdl.so")
-lib_paths=("/apex/com.android.runtime/lib/bionic/" "/apex/com.android.runtime/lib64/bionic/")
+objects=(
+	"libc.so" 
+	"libm.so" 
+	"libdl.so"
+	"libdl_android.so"
+)
 
 for object in "${objects[@]}"; do
-    for lib_path in "${lib_paths[@]}"; do
-        vmtouch -dLtvw "$lib_path$object"
-    done
+	vmtouch -dlvwf "/apex/com.android.runtime/lib64/bionic/$object"
 done
 
-objects=("libc++.so" "libandroid_runtime.so" "libandroid_servers.so" "libsurfaceflinger.so" "libgui.so" "libinputflinger.so" "libinputreader.so" "libblas.so" "libpng.so" "libjpeg.so" "liblz4.so" "liblzma.so" "libz.so")
-lib_paths=("/system/lib/" "/system/lib64/")
+objects=(
+	"libc++.so" 
+	"libandroid_runtime.so" 
+	"libandroid_servers.so" 
+	"libgui.so" 
+	"libinputflinger.so" 
+	"libinputreader.so" 
+	"libz.so"
+	"libbase.so"
+	"libbinder.so"
+	"libsync.so"
+	"libui.so" 
+	"libhwbinder.so"
+	"libinput.so"
+	"libandroid.so"
+	"libandroidfw.so"
+	"libhwui.so"
+	"libsurfaceflinger.so"
+	"libblas.so" 
+	"liblzma.so" 
+	"libunwindstack.so"
+	"ld-android.so"
+	"libnetd_client.so"
+	"libcutils.so"
+	"libutils.so"
+	"liblog.so"
+	"libsqlite.so"
+	"libasyncio.so"
+	"libbacktrace.so"
+	"libcrypto.so"
+	"libhidlbase.so"
+	"libmedia.so"
+)
 
 for object in "${objects[@]}"; do
-    for lib_path in "${lib_paths[@]}"; do
-        vmtouch -dLtvw "$lib_path$object"
-    done
+	vmtouch -dlvwf "/system/lib64/$object"
+done
+
+objects=(
+	"app_process64"
+	"surfaceflinger"
+	"linker64"
+)
+
+for object in "${objects[@]}"; do
+	vmtouch -dlvwf "/system/bin/$object"
 done
 
 
