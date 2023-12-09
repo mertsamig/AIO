@@ -82,6 +82,7 @@ boost_tune() {
 	}
 	[[ -d "/sys/module/cpu_input_boost/" ]] && {
 		write "/sys/module/cpu_input_boost/parameters/input_boost_duration" "0"
+		write "/sys/module/cpu_input_boost/parameters/wake_boost_duration" "0"
 		log_i "Disabled CPU input boost"
 	}
 	write "/sys/devices/system/cpu/sched/sched_boost" "0"
@@ -103,6 +104,8 @@ io_tune() {
 		write "${queue}add_random" "0"
 		write "${queue}iostats" "0"
 		write "${queue}io_poll" "0"
+		write "${queue}rotational" "0"
+		write "${queue}rq_affinity" "1"
 		write "${queue}nr_requests" "128"
 	done
 	for queue in /sys/block/m*/queue/; do
@@ -175,7 +178,7 @@ disable_crypto_tests() {
 }
 
 schedtune_tune() {
-	write "${stune}background/schedtune.boost" "-1"
+	write "${stune}background/schedtune.boost" "0"
 	write "${stune}background/schedtune.prefer_idle" "0"
 	write "${stune}background/schedtune.sched_boost" "0"
 	write "${stune}foreground/schedtune.boost" "0"
@@ -262,29 +265,6 @@ sched_tune() {
 	write "${kernel}random/read_wakeup_threshold" "64"
 	write "${kernel}random/write_wakeup_threshold" "256"
 	log_i "Tweaked various kernel parameters to a better overall performance"
-}
-
-cpu_set() {
-	for cpu_set in /dev/cpuset; do
-	    write "$cpu_set/cpus" "0-7"
-	    write "$cpu_set/effective_cpus" "0-7"
-	    write "$cpu_set/background/cpus" "0-1"
-	    write "$cpu_set/background/effective_cpus" "0-1"
-	    write "$cpu_set/system-background/cpus" "0-2"
-	    write "$cpu_set/system-background/effective_cpus" "0-2"
-	    write "$cpu_set/foreground/cpus" "0-7"
-	    write "$cpu_set/foreground/effective_cpus" "0-7"
-	    write "$cpu_set/top-app/cpus" "0-7"
-	    write "$cpu_set/top-app/effective_cpus" "0-7"
-	    write "$cpu_set/restricted/cpus" "0-1"
-	    write "$cpu_set/restricted/effective_cpus" "0-3"
-	    write "$cpu_set/camera-daemon/cpus" "0-3"
-	    write "$cpu_set/camera-daemon/effective_cpus" "0-3"
-	    write "$cpu_set/camera-daemon-dedicated/cpus" "0-3"
-	    write "$cpu_set/camera-daemon-dedicated/effective_cpus" "0-3"
-	    write "$cpu_set/audio-app/cpus" "0-1"
-	done
-	log_i "Tweaked cpusets"
 }
 
 fp_boost() {
@@ -510,31 +490,17 @@ props() {
 	resetprop -n debug.hwui.use_hint_manager true
 	resetprop -n wifi.supplicant_scan_interval 180
 	
-	resetprop -n arm64.memtag.process.statsd off
-	resetprop -n ro.hwui.drop_shadow_cache_size 26
-	resetprop -n ro.hwui.layer_cache_size 130
-	resetprop -n ro.hwui.path_cache_size 52
-	resetprop -n ro.hwui.r_buffer_cache_size 26
-	resetprop -n ro.hwui.texture_cache_size 267
-	resetprop -n dalvik.vm.check-dirtyWriteback-sum false
-	resetprop -n dalvik.vm.verify-bytecode false
-	resetprop -n debug.cpurend.vsync false
-	resetprop -n debug.egl.hw 1
 	resetprop -n debug.force_rtl false
-	resetprop -n debug.hwui.profile true
+	resetprop -n debug.sf.use_phase_offsets_as_durations 1
 	resetprop -n debug.sf.late.app.duration 16600000
+	resetprop -n debug.sf.earlyGL.sf.duration 16600000
+	resetprop -n debug.sf.earlyGL.app.duration 16600000
+	resetprop -n debug.sf.early.sf.duration 16600000
+	resetprop -n debug.sf.early.app.duration 16600000
 	resetprop -n debug.sf.late.sf.duration 10500000
-	resetprop -n debug.sf.recomputecrop 0
-	resetprop -n hwui.disable_vsync true
-	resetprop -n persist.sys.ssr.enable_ramdumps 0
-	resetprop -n ro.ril.enable.dtm 1
-	resetprop -n ro.ril.hsdpa.category 27
-	resetprop -n ro.ril.hsupa.category 7
-	resetprop -n ro.ril.hsxpa 2
 	resetprop -n touch.pressure.scale 0.3
 	resetprop -n debug.composition.type gpu
 	resetprop -n persist.sys.composition.type gpu
-
 	log_i "Applied prop tweaks"
 }
 
@@ -549,12 +515,6 @@ cmd_sys() {
 	cmd settings put secure screensaver_activate_on_sleep 0 
 	cmd settings put secure screensaver_enabled 0
 	cmd settings put secure send_action_app_error 0
-	cmd settings put system air_motion_engine 0
-	cmd settings put system air_motion_wake_up 0
-	cmd settings put system nearby_scanning_enabled 0
-	cmd settings put system nearby_scanning_permission_allowed 0
-	cmd settings put system rakuten_denwa 0
-	cmd settings put system send_security_reports 0
 	cmd device_config set_sync_disabled_for_tests persistent
 	cmd device_config put activity_manager max_cached_processes 256
 	cmd device_config put activity_manager max_phantom_processes 2147483647
@@ -568,49 +528,14 @@ cmd_sys() {
 	cmd device_config put activity_manager use_compaction true
 	cmd device_config put runtime_native_boot pin_camera false
 	cmd device_config put runtime_native use_app_image_startup_cache true
-	cmd settings put system anr_debugging_mechanism 0
 	cmd looper_stats disable
 	cmd settings put global netstats_enabled 0
 	cmd power set-fixed-performance-mode-enabled true
 	cmd activity idle-maintenance
-	cmd thermalservice override-status 1
 	cmd device_config put runtime_native_boot disable_lock_profiling true
-	cmd device_config put runtime_native_boot iorap_readahead_enable true
-	cmd device_config put runtime_native_boot iorap_perfetto_enable true
 	cmd settings put global fstrim_mandatory_interval 3600
 	cmd device_config put activity_manager use_oom_re_ranking true
 	log_i "Tweaked system properties"
-}
-
-bourbon() {
-	processes=(
-		"rcu_sched" 
-		"writeback" 
-		"system" 
-		"zygote" 
-		"system_server" 
-		"surfaceflinger" 
-		"netd" 
-		"kblockd" 
-		"kgsl" 
-		"composer" 
-		"mdss"
-	)
-	for process in "${processes[@]}"; do
-	    renice -n -20 -p "$(pgrep "$process")"
-	done
-	home="$(pm resolve-activity -a android.intent.action.MAIN -c android.intent.category.HOME | grep packageName | head -1 | cut -d= -f2)"
-	ime="$(ime list | grep packageName | head -1 | cut -d= -f2)"
-	processes=(
-		"com.android.systemui" 
-		"android.process.acore" 
-		"$home" 
-		"$ime"
-	)
-	for process in "${processes[@]}"; do
-	    renice -n -20 -p "$(pidof "$process")"
-	done
-	log_i "Tweaked system processes priorities"
 }
 
 log_i "Initializing"
@@ -629,7 +554,6 @@ io_tune
 boost_tune
 unify_devfreq
 cpu_tune
-cpu_set
 gpu_tune
 schedtune_tune
 sched_tune
@@ -644,7 +568,6 @@ kern_pwrsave
 blkio
 cmd_sys
 props
-#bourbon
 
 log_i "Tweaks applied. Enjoy!"
 exit=$(date +%s)
