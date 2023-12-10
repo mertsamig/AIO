@@ -100,7 +100,7 @@ objects=(
 	"linker64"
 )
 for object in "${objects[@]}"; do
-	vmtouch -dlvwf "/system/bin/$object"
+	vmtouch -dLvwf "/system/bin/$object"
 done
 
 vmtouch -dLvwf "$(pm path com.android.systemui | head -1 | cut -d: -f2)"
