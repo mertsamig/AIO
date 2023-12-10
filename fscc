@@ -23,7 +23,7 @@ objects=(
 	"libdl_android.so"
 )
 for object in "${objects[@]}"; do
-	vmtouch -dlvwf "/apex/com.android.runtime/lib64/bionic/$object"
+	vmtouch -dLvwf "/apex/com.android.runtime/lib64/bionic/$object"
 done
 
 objects=(
@@ -103,8 +103,7 @@ for object in "${objects[@]}"; do
 	vmtouch -dlvwf "/system/bin/$object"
 done
 
-vmtouch -dlvwf "$(pm path com.android.systemui | head -1 | cut -d: -f2)"
-
+vmtouch -dLvwf "$(pm path com.android.systemui | head -1 | cut -d: -f2)"
 
 log_i "FSCC - Filesystem optimizer
 Status: $(fscc_status)

@@ -501,6 +501,7 @@ props() {
 	resetprop -n touch.pressure.scale 0.3
 	resetprop -n debug.composition.type gpu
 	resetprop -n persist.sys.composition.type gpu
+	resetprop -n vendor.display.idle_time 32767
 	log_i "Applied prop tweaks"
 }
 
