@@ -61,7 +61,7 @@ content=$((($RAM*7/100)*1024/4))
 empty=$((($RAM*10/100)*1024/4))
 
 stop_services() {
-	services=("perfd" "mpdecision" "charge_logger" "vendor.perfservice" "vendor.cnss_diag" "vendor.tcpdump" "vendor.ipacm-diag" "perfservice" "cnss_diag" "tcpdump" "ipacm-diag" "statsd" "logd" "traced" "traced_probes" "idd-logreader" "idd-logreadermain" "statscompanion" "ramdump" "subsystem_ramdump" "logcat" "logcatd" "stats" "dumpstate" "aplogd" "wlan_logging")
+	services=("mpdecision" "charge_logger" "vendor.perfservice" "vendor.cnss_diag" "vendor.tcpdump" "vendor.ipacm-diag" "perfservice" "cnss_diag" "tcpdump" "ipacm-diag" "statsd" "logd" "traced" "traced_probes" "idd-logreader" "idd-logreadermain" "statscompanion" "ramdump" "subsystem_ramdump" "logcat" "logcatd" "stats" "dumpstate" "aplogd" "wlan_logging")
 	for service in "${services[@]}"; do
     	kill_svc "$service"
 	done
@@ -109,25 +109,8 @@ io_tune() {
 		write "${queue}io_poll" "0"
 		write "${queue}rotational" "0"
 		write "${queue}rq_affinity" "1"
+		write "${queue}read_ahead_kb" "128"
 		write "${queue}nr_requests" "128"
-	done
-	for queue in /sys/block/m*/queue/; do
-		write "${queue}read_ahead_kb" "512"
-	done	
-	for queue in /sys/block/l*/queue/; do
-		write "${queue}read_ahead_kb" "256"
-	done
-	for queue in /sys/block/s*/queue/; do
-		write "${queue}read_ahead_kb" "128"
-	done
-	for queue in /sys/block/d*/queue/; do
-		write "${queue}read_ahead_kb" "128"
-	done
-	for queue in /sys/block/ram*/queue/; do
-		write "${queue}read_ahead_kb" "128"
-	done
-	for queue in /sys/block/zram*/queue/; do
-		write "${queue}read_ahead_kb" "128"
 	done
 	log_i "Tweaked I/O scheduler"
 }
@@ -258,7 +241,6 @@ sched_tune() {
 	write "${kernel}sched_conservative_pl" "0"
 	write "${kernel}sched_initial_task_util" "0"
 	write "/sys/devices/system/cpu/cpufreq/hotplug/cpu_hotplug_disable" "1"
-	write "/sys/kernel/debug/debug_enabled" "0"
 	write "/sys/kernel/debug/msm_vidc/disable_thermal_mitigation" "0"
 	write "/sys/kernel/debug/msm_vidc/fw_low_power_mode" "1"
 	write "/sys/kernel/rcu_expedited" "0"
@@ -470,8 +452,8 @@ props() {
 	resetprop -n ro.surface_flinger.supports_background_blur 0
 	resetprop -n ro.surface_flinger.enable_layer_caching true
 	resetprop -n debug.sf.layer_caching_active_layer_timeout_ms 1000
-	resetprop -n debug.sf.latch_unsignaled 0
-	resetprop -n debug.sf.auto_latch_unsignaled 1
+	resetprop -n debug.sf.latch_unsignaled false
+	resetprop -n debug.sf.auto_latch_unsignaled true
 	resetprop -n debug.sf.predict_hwc_composition_strategy 0
 	resetprop -n arm64.memtag.process.system_server off
 	resetprop -n debug.sf.enable_hwc_vds 1
@@ -492,7 +474,13 @@ props() {
 	resetprop -n debug.sf.frame_rate_multiple_threshold 120
 	resetprop -n debug.hwui.use_hint_manager true
 	resetprop -n wifi.supplicant_scan_interval 180
-	
+
+	resetprop -n debug.sf.hw=0
+	resetprop -n debug.egl.hw=0
+	resetprop -n debug.gralloc.enable_fb_ubwc=1
+	resetprop -n debug.sf.recomputecrop=0
+	resetprop -n dev.pm.dyn_samplingrate=1
+	resetprop -n debug.cpurend.vsync false
 	resetprop -n debug.force_rtl false
 	resetprop -n debug.sf.use_phase_offsets_as_durations 1
 	resetprop -n debug.sf.late.app.duration 16600000
@@ -504,7 +492,6 @@ props() {
 	resetprop -n touch.pressure.scale 0.3
 	resetprop -n debug.composition.type gpu
 	resetprop -n persist.sys.composition.type gpu
-	resetprop -n vendor.display.idle_time 32767
 	
 	resetprop -n debug.rs.default-CPU-driver 1
 	resetprop -n debug.rs.max-threads 8 
@@ -516,24 +503,10 @@ props() {
 	resetprop -n debug.rs.visual 0
 	resetprop -n debug.rs.reduce 1 
 	resetprop -n debug.rs.reduce-split-accum 1
-	resetprop -n debug.rs.reduce-accum 1
 	resetprop -n debug.rs.forcerecompile 0
 	resetprop -n debug.rs.debug 0
 	resetprop -n debug.rs.precision rs_fp_imprecise
 	resetprop -n debug.bcc.nocache 1
-	resetprop -n debug.rs.qcom.verbose 0
-	resetprop -n debug.rs.qcom.dump_setup 0  
-	resetprop -n debug.rs.qcom.dump_bitcode 0
-	resetprop -n debug.rs.qcom.noprofile 1
-	resetprop -n debug.rs.qcom.nointrinsicblur 1
-	resetprop -n debug.rs.qcom.nointrinsicblas 1  
-	resetprop -n debug.rs.qcom.blurimpl gpu
-	resetprop -n debug.rs.qcom.notextures 1
-	resetprop -n debug.rs.qcom.noobjcache 1
-	resetprop -n debug.rs.qcom.noperfhint 1
-	resetprop -n debug.rs.qcom.force_finish 1
-	resetprop -n debug.rs.qcom.disable_expand 1
-	resetprop -n debug.rs.qcom.use_fast_math 1
 	log_i "Applied prop tweaks"
 }
 
