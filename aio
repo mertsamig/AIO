@@ -280,7 +280,6 @@ vm_lmk_tune() {
 	write "${lmk}lmk_fast_run" "0"
 	write "${lmk}enable_adaptive_lmk" "0"
 	write "${lmk}cost" "32"
-	#write "${lmk}adj" "0,64,128,256,512,1024"
 	write "${lmk}minfree" "$front,$visible,$Second,$Hidden,$content,$empty"
 	write "${vm}min_free_kbytes" "8192"
 	write "${vm}extra_free_kbytes" "32768"
