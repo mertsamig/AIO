@@ -71,19 +71,22 @@ stop_services() {
 
 boost_tune() {
 	[[ -e "/sys/module/cpu_boost/parameters/dynamic_stune_boost" ]] && {
-		write "/sys/module/cpu_boost/parameters/dynamic_stune_boost" "0"
-		log_i "Disabled dynamic stune boost"
+		write "/sys/module/cpu_boost/parameters/dynamic_stune_boost" "8"
+		write "/sys/module/cpu_boost/parameters/dynamic_stune_boost_ms" "512"
+		log_i "Tweaked dynamic stune boost"
 	}
 	[[ -d "/sys/module/cpu_boost/" ]] && {
-		write "/sys/module/cpu_boost/parameters/input_boost_enabled" "0"
+		write "/sys/module/cpu_boost/parameters/input_boost_ms" "64"
+		write "/sys/module/cpu_boost/parameters/input_boost_enabled" "1"
 		write "/sys/module/cpu_boost/parameters/sched_boost_on_input" "0"
 		write "/sys/module/cpu_boost/parameters/sched_boost_on_powerkey_input" "0"
-		log_i "Disabled CAF CPU input boost"
+		write "/sys/module/cpu_boost/parameters/powerkey_input_boost_ms" "512"
+		log_i "Tweaked CAF CPU input boost"
 	}
 	[[ -d "/sys/module/cpu_input_boost/" ]] && {
-		write "/sys/module/cpu_input_boost/parameters/input_boost_duration" "0"
-		write "/sys/module/cpu_input_boost/parameters/wake_boost_duration" "0"
-		log_i "Disabled CPU input boost"
+		write "/sys/module/cpu_input_boost/parameters/input_boost_duration" "64"
+		write "/sys/module/cpu_input_boost/parameters/wake_boost_duration" "512"
+		log_i "Tweaked CPU input boost"
 	}
 	write "/sys/devices/system/cpu/sched/sched_boost" "0"
 	write "${kernel}slide_boost_enabled" "0"
@@ -134,11 +137,11 @@ cpu_tune() {
 		write "$cpu/scaling_governor" "schedutil"
 	done
 	for governor in $(find /sys/devices/system/cpu/ -name *util* -type d); do
-		write "$governor/up_rate_limit_us" "500"
-		write "$governor/down_rate_limit_us" "20000"
+		write "$governor/up_rate_limit_us" "5000"
+		write "$governor/down_rate_limit_us" "5000"
 		write "$governor/pl" "1"
 		write "$governor/iowait_boost_enable" "1"
-		write "$governor/rate_limit_us" "20000"
+		write "$governor/rate_limit_us" "5000"
 		write "$governor/hispeed_load" "90"
 		write "$governor/hispeed_freq" "4294967295"
 	done
@@ -181,7 +184,7 @@ schedtune_tune() {
 	write "${stune}background/schedtune.boost" "0"
 	write "${stune}background/schedtune.prefer_idle" "0"
 	write "${stune}background/schedtune.sched_boost" "0"
-	write "${stune}foreground/schedtune.boost" "0"
+	write "${stune}foreground/schedtune.boost" "1"
 	write "${stune}foreground/schedtune.prefer_idle" "0"
 	write "${stune}foreground/schedtune.sched_boost" "0"
 	write "${stune}rt/schedtune.boost" "0"
@@ -191,7 +194,7 @@ schedtune_tune() {
 	write "${stune}camera-daemon/schedtune.prefer_idle" "1"
 	write "${stune}camera-daemon/schedtune.sched_boost" "0"
 	write "${stune}top-app/schedtune.boost" "1"
-	write "${stune}top-app/schedtune.prefer_idle" "0"
+	write "${stune}top-app/schedtune.prefer_idle" "1"
 	write "${stune}top-app/schedtune.sched_boost" "0"
 	write "${stune}schedtune.boost" "0"
 	write "${stune}schedtune.prefer_idle" "0"
@@ -502,6 +505,35 @@ props() {
 	resetprop -n debug.composition.type gpu
 	resetprop -n persist.sys.composition.type gpu
 	resetprop -n vendor.display.idle_time 32767
+	
+	resetprop -n debug.rs.default-CPU-driver 1
+	resetprop -n debug.rs.max-threads 8 
+	resetprop -n debug.rs.script 0
+	resetprop -n debug.rs.profile 0
+	resetprop -n debug.rs.shader 0  
+	resetprop -n debug.rs.shader.attributes 0
+	resetprop -n debug.rs.shader.uniforms 0
+	resetprop -n debug.rs.visual 0
+	resetprop -n debug.rs.reduce 1 
+	resetprop -n debug.rs.reduce-split-accum 1
+	resetprop -n debug.rs.reduce-accum 1
+	resetprop -n debug.rs.forcerecompile 0
+	resetprop -n debug.rs.debug 0
+	resetprop -n debug.rs.precision rs_fp_imprecise
+	resetprop -n debug.bcc.nocache 1
+	resetprop -n debug.rs.qcom.verbose 0
+	resetprop -n debug.rs.qcom.dump_setup 0  
+	resetprop -n debug.rs.qcom.dump_bitcode 0
+	resetprop -n debug.rs.qcom.noprofile 1
+	resetprop -n debug.rs.qcom.nointrinsicblur 1
+	resetprop -n debug.rs.qcom.nointrinsicblas 1  
+	resetprop -n debug.rs.qcom.blurimpl gpu
+	resetprop -n debug.rs.qcom.notextures 1
+	resetprop -n debug.rs.qcom.noobjcache 1
+	resetprop -n debug.rs.qcom.noperfhint 1
+	resetprop -n debug.rs.qcom.force_finish 1
+	resetprop -n debug.rs.qcom.disable_expand 1
+	resetprop -n debug.rs.qcom.use_fast_math 1
 	log_i "Applied prop tweaks"
 }
 
