@@ -427,7 +427,7 @@ props() {
 	resetprop -n db.log.slow_query_threshold 0
 	resetprop -n debug.atrace.tags.enableflags 0
 	resetprop -n debug.mdpcomp.logs 0
-	resetprop -n debug.sf.disable_client_composition_cache 1
+	resetprop -n debug.sf.disable_client_composition_cache 0
 	resetprop -n debug.sf.dump 0
 	resetprop -n libc.debug.malloc 0
 	resetprop -n media.metrics.enabled 0
@@ -450,7 +450,7 @@ props() {
 	resetprop -n debug.sf.layer_caching_active_layer_timeout_ms 1000
 	resetprop -n debug.sf.latch_unsignaled false
 	resetprop -n debug.sf.auto_latch_unsignaled true
-	resetprop -n debug.sf.predict_hwc_composition_strategy 0
+	resetprop -n debug.sf.predict_hwc_composition_strategy 1
 	resetprop -n arm64.memtag.process.system_server off
 	resetprop -n debug.sf.enable_hwc_vds 1
 	resetprop -n debug.sf.enable_layer_caching 1
@@ -461,20 +461,18 @@ props() {
 	resetprop -n renderthread.skia.reduceopstasksplitting true
 	resetprop -n ro.surface_flinger.max_frame_buffer_acquired_buffers 3
 	resetprop -n sys.use_fifo_ui 1
-	resetprop -n dalvik.vm.lockprof.threshold 250
 	resetprop -n persist.bg.dexopt.enable false 
 	resetprop -n debug.sf.treat_170m_as_sRGB 1
 	resetprop -n debug.hwui.skia_atrace_enabled false
 	resetprop -n zygote.critical_window.minute 10
-	resetprop -n ro.apk_verity.mode 2
 	resetprop -n debug.sf.frame_rate_multiple_threshold 120
 	resetprop -n debug.hwui.use_hint_manager true
 
 	resetprop -n debug.sf.hw 1
 	resetprop -n debug.egl.hw 1
 	resetprop -n dev.pm.dyn_samplingrate 1
+	resetprop -n debug.gralloc.enable_fb_ubwc 1
 	resetprop -n debug.cpurend.vsync false
-	resetprop -n debug.force_rtl false
 	resetprop -n debug.sf.use_phase_offsets_as_durations 1
 	resetprop -n debug.sf.late.app.duration 16600000
 	resetprop -n debug.sf.earlyGL.sf.duration 16600000
@@ -482,7 +480,6 @@ props() {
 	resetprop -n debug.sf.early.sf.duration 16600000
 	resetprop -n debug.sf.early.app.duration 16600000
 	resetprop -n debug.sf.late.sf.duration 10500000
-	resetprop -n touch.pressure.scale 0.3
 	resetprop -n debug.composition.type gpu
 	resetprop -n persist.sys.composition.type gpu
 	log_i "Applied prop tweaks"
@@ -499,7 +496,6 @@ cmd_sys() {
 	cmd settings put secure screensaver_activate_on_sleep 0 
 	cmd settings put secure screensaver_enabled 0
 	cmd settings put secure send_action_app_error 0
-	cmd device_config set_sync_disabled_for_tests persistent
 	cmd device_config put activity_manager max_cached_processes 256
 	cmd device_config put activity_manager max_phantom_processes 2147483647
 	cmd settings put global settings_enable_monitor_phantom_procs false
@@ -515,7 +511,6 @@ cmd_sys() {
 	cmd looper_stats disable
 	cmd settings put global netstats_enabled 0
 	cmd power set-fixed-performance-mode-enabled true
-	cmd activity idle-maintenance
 	cmd device_config put runtime_native_boot disable_lock_profiling true
 	cmd settings put global fstrim_mandatory_interval 3600
 	cmd device_config put activity_manager use_oom_re_ranking true
