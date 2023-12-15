@@ -247,8 +247,6 @@ sched_tune() {
 	write "/sys/kernel/rcu_normal" "1"
 	write "/sys/devices/system/cpu/sched/hint_enable" "0"
 	write "/proc/sys/dev/tty/ldisc_autoload" "0"
-	write "${kernel}random/read_wakeup_threshold" "64"
-	write "${kernel}random/write_wakeup_threshold" "256"
 	log_i "Tweaked various kernel parameters to a better overall performance"
 }
 
@@ -266,7 +264,7 @@ vm_lmk_tune() {
 	write "${vm}dirty_expire_centisecs" "3000"
 	write "${vm}dirty_writeback_centisecs" "500"
 	write "${vm}page-cluster" "0"
-	write "${vm}stat_interval" "600"
+	write "${vm}stat_interval" "20"
 	write "${vm}overcommit_memory" "1"
 	write "${vm}overcommit_ratio" "100"
 	write "${vm}vfs_cache_pressure" "100"
@@ -279,7 +277,6 @@ vm_lmk_tune() {
 	write "${lmk}oom_reaper" "1"
 	write "${lmk}lmk_fast_run" "0"
 	write "${lmk}enable_adaptive_lmk" "0"
-	write "${lmk}cost" "32"
 	write "${lmk}minfree" "$front,$visible,$Second,$Hidden,$content,$empty"
 	write "${vm}min_free_kbytes" "8192"
 	write "${vm}extra_free_kbytes" "32768"
@@ -472,13 +469,10 @@ props() {
 	resetprop -n ro.apk_verity.mode 2
 	resetprop -n debug.sf.frame_rate_multiple_threshold 120
 	resetprop -n debug.hwui.use_hint_manager true
-	resetprop -n wifi.supplicant_scan_interval 180
 
-	resetprop -n debug.sf.hw=0
-	resetprop -n debug.egl.hw=0
-	resetprop -n debug.gralloc.enable_fb_ubwc=1
-	resetprop -n debug.sf.recomputecrop=0
-	resetprop -n dev.pm.dyn_samplingrate=1
+	resetprop -n debug.sf.hw 1
+	resetprop -n debug.egl.hw 1
+	resetprop -n dev.pm.dyn_samplingrate 1
 	resetprop -n debug.cpurend.vsync false
 	resetprop -n debug.force_rtl false
 	resetprop -n debug.sf.use_phase_offsets_as_durations 1
@@ -491,21 +485,6 @@ props() {
 	resetprop -n touch.pressure.scale 0.3
 	resetprop -n debug.composition.type gpu
 	resetprop -n persist.sys.composition.type gpu
-	
-	resetprop -n debug.rs.default-CPU-driver 1
-	resetprop -n debug.rs.max-threads 8 
-	resetprop -n debug.rs.script 0
-	resetprop -n debug.rs.profile 0
-	resetprop -n debug.rs.shader 0  
-	resetprop -n debug.rs.shader.attributes 0
-	resetprop -n debug.rs.shader.uniforms 0
-	resetprop -n debug.rs.visual 0
-	resetprop -n debug.rs.reduce 1 
-	resetprop -n debug.rs.reduce-split-accum 1
-	resetprop -n debug.rs.forcerecompile 0
-	resetprop -n debug.rs.debug 0
-	resetprop -n debug.rs.precision rs_fp_imprecise
-	resetprop -n debug.bcc.nocache 1
 	log_i "Applied prop tweaks"
 }
 
