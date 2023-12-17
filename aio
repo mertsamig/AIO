@@ -455,22 +455,17 @@ props() {
 	resetprop -n debug.sf.enable_hwc_vds 1
 	resetprop -n debug.sf.enable_layer_caching 1
 	resetprop -n persist.vendor.camera.realtimethread 1
-	resetprop -n ro.cp_system_other_odex 1
 	resetprop -n debug.hwui.renderer skiagl
 	resetprop -n debug.renderengine.backend skiaglthreaded
 	resetprop -n renderthread.skia.reduceopstasksplitting true
 	resetprop -n ro.surface_flinger.max_frame_buffer_acquired_buffers 3
 	resetprop -n sys.use_fifo_ui 1
 	resetprop -n persist.bg.dexopt.enable false 
-	resetprop -n debug.sf.treat_170m_as_sRGB 1
 	resetprop -n debug.hwui.skia_atrace_enabled false
-	resetprop -n zygote.critical_window.minute 10
-	resetprop -n debug.sf.frame_rate_multiple_threshold 120
 	resetprop -n debug.hwui.use_hint_manager true
 
 	resetprop -n debug.sf.hw 1
 	resetprop -n debug.egl.hw 1
-	resetprop -n dev.pm.dyn_samplingrate 1
 	resetprop -n debug.gralloc.enable_fb_ubwc 1
 	resetprop -n debug.cpurend.vsync false
 	resetprop -n debug.sf.use_phase_offsets_as_durations 1
@@ -486,34 +481,46 @@ props() {
 }
 
 cmd_sys() {
-	cmd settings put global activity_starts_logging_enabled 0
-	cmd settings put global ble_scan_always_enabled 0
-	cmd settings put global hotword_detection_enabled 0
-	cmd settings put global mobile_data_always_on 0
-	cmd settings put global network_recommendations_enabled 0
-	cmd settings put global wifi_scan_always_enabled 0
-	cmd settings put secure screensaver_activate_on_dock 0
-	cmd settings put secure screensaver_activate_on_sleep 0 
-	cmd settings put secure screensaver_enabled 0
-	cmd settings put secure send_action_app_error 0
-	cmd device_config put activity_manager max_cached_processes 256
-	cmd device_config put activity_manager max_phantom_processes 2147483647
-	cmd settings put global settings_enable_monitor_phantom_procs false
-	cmd device_config put activity_manager max_empty_time_millis 43200000
-	cmd device_config put runtime_native usap_pool_enabled true
-	cmd device_config put runtime_native usap_pool_refill_delay_ms 3000
-	cmd device_config put runtime_native usap_pool_size_max 3
-	cmd device_config put runtime_native usap_pool_size_min 1
-	cmd device_config put runtime_native usap_refill_threshold 1
-	cmd device_config put activity_manager use_compaction true
-	cmd device_config put runtime_native_boot pin_camera false
-	cmd device_config put runtime_native use_app_image_startup_cache true
+	settings put global activity_starts_logging_enabled 0
+	settings put global ble_scan_always_enabled 0
+	settings put global hotword_detection_enabled 0
+	settings put global mobile_data_always_on 0
+	settings put global network_recommendations_enabled 0
+	settings put global wifi_scan_always_enabled 0
+	settings put secure screensaver_activate_on_dock 0
+	settings put secure screensaver_activate_on_sleep 0 
+	settings put secure screensaver_enabled 0
+	settings put secure send_action_app_error 0
+	device_config put activity_manager max_cached_processes 256
+	device_config put activity_manager max_phantom_processes 2147483647
+	settings put global settings_enable_monitor_phantom_procs false
+	device_config put activity_manager max_empty_time_millis 43200000
+	device_config put runtime_native usap_pool_enabled true
+	device_config put runtime_native usap_pool_refill_delay_ms 3000
+	device_config put runtime_native usap_pool_size_max 3
+	device_config put runtime_native usap_pool_size_min 1
+	device_config put runtime_native usap_refill_threshold 1
+	device_config put activity_manager use_compaction true
+	device_config put runtime_native_boot pin_camera false
+	device_config put runtime_native use_app_image_startup_cache true
 	cmd looper_stats disable
-	cmd settings put global netstats_enabled 0
+	settings put global netstats_enabled 0
 	cmd power set-fixed-performance-mode-enabled true
-	cmd device_config put runtime_native_boot disable_lock_profiling true
-	cmd settings put global fstrim_mandatory_interval 3600
-	cmd device_config put activity_manager use_oom_re_ranking true
+	device_config put runtime_native_boot disable_lock_profiling true
+	device_config put activity_manager use_oom_re_ranking true
+	
+	device_config put activity_manager_native_boot use_freezer true
+	device_config put activity_manager proactive_kills_enabled false
+	device_config put activity_manager uses_weight true
+	device_config put runtime_native_boot enable_apex_image true
+	device_config put runtime_native_boot enable_generational_cc true
+	device_config put runtime_native_boot enable_profile_boot_class_path true
+	device_config put runtime_native_boot enable_profile_system_server true
+	device_config put runtime_native_boot enable_readahead true
+	device_config put runtime_native_boot is_uffd_gc_enabled true
+	device_config put surface_flinger_native_boot max_frame_buffer_acquired_buffers 3
+	settings put global fstrim_mandatory_interval 86400000
+	settings put global storage_benchmark_interval 9223372036854775807
 	log_i "Tweaked system properties"
 }
 
