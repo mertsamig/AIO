@@ -509,15 +509,22 @@ cmd_sys() {
 	device_config put runtime_native_boot disable_lock_profiling true
 	device_config put activity_manager use_oom_re_ranking true
 	
-	device_config put activity_manager_native_boot use_freezer true
+	device_config put activity_manager_native_boot use_freezer false
 	device_config put activity_manager proactive_kills_enabled false
 	device_config put activity_manager uses_weight true
 	device_config put runtime_native_boot enable_apex_image true
 	device_config put runtime_native_boot enable_generational_cc true
-	device_config put runtime_native_boot enable_profile_boot_class_path true
-	device_config put runtime_native_boot enable_profile_system_server true
-	device_config put runtime_native_boot enable_readahead true
+	device_config put runtime_native_boot enable_profile_boot_class_path false
+	device_config put runtime_native_boot enable_profile_system_server false
 	device_config put runtime_native_boot is_uffd_gc_enabled true
+	device_config put runtime_native_boot enable_uffd_gc_2 true
+	device_config put interaction_jank_monitor enabled false
+	device_config put latency_tracker enabled false
+	device_config put media media_metrics_mode 0
+	device_config put runtime_native_boot enable_perfetto true
+	device_config put runtime_native_boot enable_readahead true
+	device_config put runtime_native_boot iorap_perfetto_enable true
+	device_config put runtime_native_boot iorap_readahead_enable true
 	device_config put surface_flinger_native_boot max_frame_buffer_acquired_buffers 3
 	settings put global fstrim_mandatory_interval 86400000
 	settings put global storage_benchmark_interval 9223372036854775807
