@@ -452,8 +452,8 @@ props() {
 	resetprop -n debug.sf.auto_latch_unsignaled true
 	resetprop -n debug.sf.predict_hwc_composition_strategy 1
 	resetprop -n arm64.memtag.process.system_server off
-	resetprop -n debug.sf.enable_hwc_vds 1
-	resetprop -n debug.sf.enable_layer_caching 1
+	resetprop -n debug.sf.enable_hwc_vds true
+	resetprop -n debug.sf.enable_layer_caching true
 	resetprop -n persist.vendor.camera.realtimethread 1
 	resetprop -n debug.hwui.renderer skiagl
 	resetprop -n debug.renderengine.backend skiaglthreaded
@@ -464,6 +464,9 @@ props() {
 	resetprop -n pm.dexopt.disable_bg_dexopt true 
 	resetprop -n debug.hwui.skia_atrace_enabled false
 	resetprop -n debug.hwui.use_hint_manager true
+	resetprop -n debug.sf.enable_gl_backpressure false
+	resetprop -n persist.debug.sf.enable_layer_lifecycle_manager true
+	resetprop -n debug.sf.enable_small_dirty_detection true
 
 	resetprop -n debug.sf.hw 1
 	resetprop -n debug.egl.hw 1
