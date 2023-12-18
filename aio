@@ -461,6 +461,7 @@ props() {
 	resetprop -n ro.surface_flinger.max_frame_buffer_acquired_buffers 3
 	resetprop -n sys.use_fifo_ui 1
 	resetprop -n persist.bg.dexopt.enable false 
+	resetprop -n pm.dexopt.disable_bg_dexopt true 
 	resetprop -n debug.hwui.skia_atrace_enabled false
 	resetprop -n debug.hwui.use_hint_manager true
 
@@ -512,10 +513,7 @@ cmd_sys() {
 	device_config put activity_manager_native_boot use_freezer false
 	device_config put activity_manager proactive_kills_enabled false
 	device_config put activity_manager uses_weight true
-	device_config put runtime_native_boot enable_apex_image true
 	device_config put runtime_native_boot enable_generational_cc true
-	device_config put runtime_native_boot enable_profile_boot_class_path false
-	device_config put runtime_native_boot enable_profile_system_server false
 	device_config put runtime_native_boot is_uffd_gc_enabled true
 	device_config put runtime_native_boot enable_uffd_gc_2 true
 	device_config put interaction_jank_monitor enabled false
@@ -525,6 +523,7 @@ cmd_sys() {
 	device_config put runtime_native_boot enable_readahead true
 	device_config put runtime_native_boot iorap_perfetto_enable true
 	device_config put runtime_native_boot iorap_readahead_enable true
+	device_config put activity_manager_native_boot offload_queue_enabled true
 	device_config put surface_flinger_native_boot max_frame_buffer_acquired_buffers 3
 	settings put global fstrim_mandatory_interval 86400000
 	settings put global storage_benchmark_interval 9223372036854775807
