@@ -464,6 +464,7 @@ props() {
 	resetprop -n pm.dexopt.disable_bg_dexopt true 
 	resetprop -n debug.hwui.skia_atrace_enabled false
 	resetprop -n debug.hwui.use_hint_manager true
+	resetprop -n debug.hwui.target_cpu_time_percent 30
 	resetprop -n debug.sf.enable_gl_backpressure false
 	resetprop -n persist.debug.sf.enable_layer_lifecycle_manager true
 	resetprop -n debug.sf.enable_small_dirty_detection true
@@ -481,6 +482,14 @@ props() {
 	resetprop -n debug.sf.late.sf.duration 10500000
 	resetprop -n debug.composition.type gpu
 	resetprop -n persist.sys.composition.type gpu
+	resetprop -n ro.lmk.critical_upgrade true
+	resetprop -n ro.lmk.upgrade_pressure 40 
+	resetprop -n ro.lmk.downgrade_pressure 60 
+	resetprop -n ro.lmk.kill_heaviest_task false
+	resetprop -n ro.hwui.render_ahead 24
+	resetprop -n ro.iorapd.enable false
+	resetprop -n iorapd.perfetto.enable false
+	resetprop -n iorapd.readahead.enable false
 	log_i "Applied prop tweaks"
 }
 
@@ -522,10 +531,10 @@ cmd_sys() {
 	device_config put interaction_jank_monitor enabled false
 	device_config put latency_tracker enabled false
 	device_config put media media_metrics_mode 0
-	device_config put runtime_native_boot enable_perfetto true
-	device_config put runtime_native_boot enable_readahead true
-	device_config put runtime_native_boot iorap_perfetto_enable true
-	device_config put runtime_native_boot iorap_readahead_enable true
+	device_config put runtime_native_boot enable_perfetto false
+	device_config put runtime_native_boot enable_readahead false
+	device_config put runtime_native_boot iorap_perfetto_enable false
+	device_config put runtime_native_boot iorap_readahead_enable false
 	device_config put activity_manager_native_boot offload_queue_enabled true
 	device_config put surface_flinger_native_boot max_frame_buffer_acquired_buffers 3
 	settings put global fstrim_mandatory_interval 86400000
