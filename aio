@@ -260,9 +260,9 @@ fp_boost() {
 vm_lmk_tune() {
 	sync
 	write "${vm}dirty_background_ratio" "10"
-	write "${vm}dirty_ratio" "20"
+	write "${vm}dirty_ratio" "30"
 	write "${vm}dirty_expire_centisecs" "3000"
-	write "${vm}dirty_writeback_centisecs" "500"
+	write "${vm}dirty_writeback_centisecs" "3000"
 	write "${vm}page-cluster" "0"
 	write "${vm}stat_interval" "20"
 	write "${vm}overcommit_memory" "1"
@@ -275,8 +275,8 @@ vm_lmk_tune() {
 	write "${vm}block_dump" "0"
 	write "${vm}laptop_mode" "0"
 	write "${lmk}oom_reaper" "1"
-	write "${lmk}lmk_fast_run" "0"
-	write "${lmk}enable_adaptive_lmk" "0"
+	write "${lmk}lmk_fast_run" "1"
+	write "${lmk}enable_adaptive_lmk" "1"
 	write "${lmk}minfree" "$front,$visible,$Second,$Hidden,$content,$empty"
 	write "${vm}min_free_kbytes" "8192"
 	write "${vm}extra_free_kbytes" "32768"
@@ -482,9 +482,6 @@ props() {
 	resetprop -n debug.sf.late.sf.duration 10500000
 	resetprop -n debug.composition.type gpu
 	resetprop -n persist.sys.composition.type gpu
-	resetprop -n ro.lmk.critical_upgrade true
-	resetprop -n ro.lmk.upgrade_pressure 40 
-	resetprop -n ro.lmk.downgrade_pressure 60 
 	resetprop -n ro.lmk.kill_heaviest_task false
 	resetprop -n ro.hwui.render_ahead 24
 	resetprop -n ro.iorapd.enable false
@@ -522,7 +519,7 @@ cmd_sys() {
 	device_config put runtime_native_boot disable_lock_profiling true
 	device_config put activity_manager use_oom_re_ranking true
 	
-	device_config put activity_manager_native_boot use_freezer false
+	device_config put activity_manager_native_boot use_freezer true
 	device_config put activity_manager proactive_kills_enabled false
 	device_config put activity_manager uses_weight true
 	device_config put runtime_native_boot enable_generational_cc true
