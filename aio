@@ -61,7 +61,7 @@ content=$((($RAM*7/100)*1024/4))
 empty=$((($RAM*10/100)*1024/4))
 
 stop_services() {
-	services=("mpdecision" "charge_logger" "vendor.perfservice" "vendor.cnss_diag" "vendor.tcpdump" "vendor.ipacm-diag" "perfservice" "cnss_diag" "tcpdump" "ipacm-diag" "statsd" "logd" "traced" "traced_probes" "idd-logreader" "idd-logreadermain" "statscompanion" "ramdump" "subsystem_ramdump" "logcat" "logcatd" "stats" "dumpstate" "aplogd" "wlan_logging")
+	services=("perfd" "mpdecision" "charge_logger" "vendor.perfservice" "vendor.cnss_diag" "vendor.tcpdump" "vendor.ipacm-diag" "perfservice" "cnss_diag" "tcpdump" "ipacm-diag" "statsd" "logd" "traced" "traced_probes" "idd-logreader" "idd-logreadermain" "statscompanion" "ramdump" "subsystem_ramdump" "logcat" "logcatd" "stats" "dumpstate" "aplogd" "wlan_logging")
 	for service in "${services[@]}"; do
     	kill_svc "$service"
 	done
@@ -275,8 +275,8 @@ vm_lmk_tune() {
 	write "${vm}block_dump" "0"
 	write "${vm}laptop_mode" "0"
 	write "${lmk}oom_reaper" "1"
-	write "${lmk}lmk_fast_run" "1"
-	write "${lmk}enable_adaptive_lmk" "1"
+	write "${lmk}lmk_fast_run" "0"
+	write "${lmk}enable_adaptive_lmk" "0"
 	write "${lmk}minfree" "$front,$visible,$Second,$Hidden,$content,$empty"
 	write "${vm}min_free_kbytes" "8192"
 	write "${vm}extra_free_kbytes" "32768"
@@ -471,6 +471,7 @@ props() {
 
 	resetprop -n debug.sf.hw 1
 	resetprop -n debug.egl.hw 1
+	resetprop -n persist.sys.ui.hw 1
 	resetprop -n debug.gralloc.enable_fb_ubwc 1
 	resetprop -n debug.cpurend.vsync false
 	resetprop -n debug.sf.use_phase_offsets_as_durations 1
