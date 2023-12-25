@@ -108,7 +108,7 @@ io_tune() {
 		write "${queue}iostats" "0"
 		write "${queue}io_poll" "0"
 		write "${queue}rotational" "0"
-		write "${queue}rq_affinity" "1"
+		write "${queue}rq_affinity" "0"
 		write "${queue}read_ahead_kb" "128"
 		write "${queue}nr_requests" "128"
 	done
@@ -120,11 +120,11 @@ cpu_tune() {
 		write "$cpu/scaling_governor" "schedutil"
 	done
 	for governor in $(find /sys/devices/system/cpu/ -name *util* -type d); do
-		write "$governor/up_rate_limit_us" "5000"
-		write "$governor/down_rate_limit_us" "5000"
+		write "$governor/up_rate_limit_us" "4000"
+		write "$governor/down_rate_limit_us" "16000"
 		write "$governor/pl" "1"
 		write "$governor/iowait_boost_enable" "1"
-		write "$governor/rate_limit_us" "5000"
+		write "$governor/rate_limit_us" "4000"
 		write "$governor/hispeed_load" "90"
 		write "$governor/hispeed_freq" "4294967295"
 	done
@@ -211,14 +211,14 @@ disable_crc() {
 }
 
 sched_tune() {
-	write "${kernel}sched_child_runs_first" "0"
-	write "${kernel}perf_cpu_time_max_percent" "10"
+	write "${kernel}sched_child_runs_first" "1"
+	write "${kernel}perf_cpu_time_max_percent" "5"
 	write "${kernel}sched_autogroup_enabled" "1"
 	write "${kernel}sched_tunable_scaling" "0"
-	write "${kernel}sched_latency_ns" "6000000"
-	write "${kernel}sched_min_granularity_ns" "750000"
-	write "${kernel}sched_wakeup_granularity_ns" "1000000"
-	write "${kernel}sched_migration_cost_ns" "500000"
+	write "${kernel}sched_latency_ns" "4000000"
+	write "${kernel}sched_min_granularity_ns" "500000"
+	write "${kernel}sched_wakeup_granularity_ns" "2000000"
+	write "${kernel}sched_migration_cost_ns" "5000000"
 	write "${kernel}sched_rt_runtime_us" "950000"
 	write "${kernel}sched_rt_period_us" "1000000"
 	write "${kernel}sched_shares_window_ns" "1000000"
@@ -264,7 +264,7 @@ vm_lmk_tune() {
 	write "${vm}dirty_expire_centisecs" "3000"
 	write "${vm}dirty_writeback_centisecs" "3000"
 	write "${vm}page-cluster" "0"
-	write "${vm}stat_interval" "20"
+	write "${vm}stat_interval" "600"
 	write "${vm}overcommit_memory" "1"
 	write "${vm}overcommit_ratio" "100"
 	write "${vm}vfs_cache_pressure" "100"
@@ -463,15 +463,10 @@ props() {
 	resetprop -n persist.bg.dexopt.enable false 
 	resetprop -n pm.dexopt.disable_bg_dexopt true 
 	resetprop -n debug.hwui.skia_atrace_enabled false
-	resetprop -n debug.hwui.use_hint_manager true
-	resetprop -n debug.hwui.target_cpu_time_percent 30
 	resetprop -n debug.sf.enable_gl_backpressure false
 	resetprop -n persist.debug.sf.enable_layer_lifecycle_manager true
 	resetprop -n debug.sf.enable_small_dirty_detection true
 
-	resetprop -n debug.sf.hw 1
-	resetprop -n debug.egl.hw 1
-	resetprop -n persist.sys.ui.hw 1
 	resetprop -n debug.gralloc.enable_fb_ubwc 1
 	resetprop -n debug.cpurend.vsync false
 	resetprop -n debug.sf.use_phase_offsets_as_durations 1
@@ -483,8 +478,6 @@ props() {
 	resetprop -n debug.sf.late.sf.duration 10500000
 	resetprop -n debug.composition.type gpu
 	resetprop -n persist.sys.composition.type gpu
-	resetprop -n ro.lmk.kill_heaviest_task false
-	resetprop -n ro.hwui.render_ahead 24
 	resetprop -n ro.iorapd.enable false
 	resetprop -n iorapd.perfetto.enable false
 	resetprop -n iorapd.readahead.enable false
@@ -511,7 +504,7 @@ cmd_sys() {
 	device_config put runtime_native usap_pool_size_max 3
 	device_config put runtime_native usap_pool_size_min 1
 	device_config put runtime_native usap_refill_threshold 1
-	device_config put activity_manager use_compaction true
+	device_config put activity_manager use_compaction false
 	device_config put runtime_native_boot pin_camera false
 	device_config put runtime_native use_app_image_startup_cache true
 	cmd looper_stats disable
@@ -520,7 +513,7 @@ cmd_sys() {
 	device_config put runtime_native_boot disable_lock_profiling true
 	device_config put activity_manager use_oom_re_ranking true
 	
-	device_config put activity_manager_native_boot use_freezer true
+	device_config put activity_manager_native_boot use_freezer false
 	device_config put activity_manager proactive_kills_enabled false
 	device_config put activity_manager uses_weight true
 	device_config put runtime_native_boot enable_generational_cc true
