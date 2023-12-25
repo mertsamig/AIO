@@ -109,8 +109,25 @@ io_tune() {
 		write "${queue}io_poll" "0"
 		write "${queue}rotational" "0"
 		write "${queue}rq_affinity" "0"
-		write "${queue}read_ahead_kb" "128"
 		write "${queue}nr_requests" "128"
+	done
+	for queue in /sys/block/m*/queue/; do
+		write "${queue}read_ahead_kb" "512"
+	done	
+	for queue in /sys/block/l*/queue/; do
+		write "${queue}read_ahead_kb" "256"
+	done
+	for queue in /sys/block/s*/queue/; do
+		write "${queue}read_ahead_kb" "128"
+	done
+	for queue in /sys/block/d*/queue/; do
+		write "${queue}read_ahead_kb" "128"
+	done
+	for queue in /sys/block/ram*/queue/; do
+		write "${queue}read_ahead_kb" "128"
+	done
+	for queue in /sys/block/zram*/queue/; do
+		write "${queue}read_ahead_kb" "128"
 	done
 	log_i "Tweaked I/O scheduler"
 }
