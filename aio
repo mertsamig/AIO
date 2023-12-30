@@ -463,10 +463,15 @@ props() {
 	resetprop -n persist.bg.dexopt.enable false 
 	resetprop -n pm.dexopt.disable_bg_dexopt true 
 	resetprop -n debug.hwui.skia_atrace_enabled false
+	resetprop -n debug.hwui.use_hint_manager true
+	resetprop -n debug.hwui.target_cpu_time_percent 30
 	resetprop -n debug.sf.enable_gl_backpressure false
 	resetprop -n persist.debug.sf.enable_layer_lifecycle_manager true
 	resetprop -n debug.sf.enable_small_dirty_detection true
 
+	resetprop -n debug.sf.hw 1
+	resetprop -n debug.egl.hw 1
+	resetprop -n persist.sys.ui.hw 1
 	resetprop -n debug.gralloc.enable_fb_ubwc 1
 	resetprop -n debug.cpurend.vsync false
 	resetprop -n debug.sf.use_phase_offsets_as_durations 1
