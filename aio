@@ -36,6 +36,7 @@ write() {
 }
 
 kill_svc() {
+	stop "$1"
 	pkill -SIGTERM "$1"
 	pkill -KILL "$1"
 }
@@ -61,7 +62,7 @@ content=$((($RAM*7/100)*1024/4))
 empty=$((($RAM*10/100)*1024/4))
 
 stop_services() {
-	services=("perfd" "mpdecision" "charge_logger" "vendor.perfservice" "vendor.cnss_diag" "vendor.tcpdump" "vendor.ipacm-diag" "perfservice" "cnss_diag" "tcpdump" "ipacm-diag" "statsd" "logd" "traced" "traced_probes" "idd-logreader" "idd-logreadermain" "statscompanion" "ramdump" "subsystem_ramdump" "logcat" "logcatd" "stats" "dumpstate" "aplogd" "wlan_logging")
+	services=("perfd" "mpdecision" "charge_logger" "vendor.perfservice" "vendor.cnss_diag" "vendor.tcpdump" "vendor.ipacm-diag" "perfservice" "cnss_diag" "tcpdump" "ipacm-diag" "statsd" "logd" "traced" "traced_probes" "idd-logreader" "idd-logreadermain" "statscompanion" "ramdump" "subsystem_ramdump" "logcat" "logcatd" "stats" "dumpstate" "aplogd" "wlan_logging" "tombstoned" "mediametrics")
 	for service in "${services[@]}"; do
     	kill_svc "$service"
 	done
@@ -71,22 +72,19 @@ stop_services() {
 
 boost_tune() {
 	[[ -e "/sys/module/cpu_boost/parameters/dynamic_stune_boost" ]] && {
-		write "/sys/module/cpu_boost/parameters/dynamic_stune_boost" "8"
-		write "/sys/module/cpu_boost/parameters/dynamic_stune_boost_ms" "512"
-		log_i "Tweaked dynamic stune boost"
+		write "/sys/module/cpu_boost/parameters/dynamic_stune_boost" "0"
+		log_i "Disabled dynamic stune boost"
 	}
 	[[ -d "/sys/module/cpu_boost/" ]] && {
-		write "/sys/module/cpu_boost/parameters/input_boost_ms" "64"
-		write "/sys/module/cpu_boost/parameters/input_boost_enabled" "1"
+		write "/sys/module/cpu_boost/parameters/input_boost_enabled" "0"
 		write "/sys/module/cpu_boost/parameters/sched_boost_on_input" "0"
 		write "/sys/module/cpu_boost/parameters/sched_boost_on_powerkey_input" "0"
-		write "/sys/module/cpu_boost/parameters/powerkey_input_boost_ms" "512"
-		log_i "Tweaked CAF CPU input boost"
+		log_i "Disabled CAF CPU input boost"
 	}
 	[[ -d "/sys/module/cpu_input_boost/" ]] && {
-		write "/sys/module/cpu_input_boost/parameters/input_boost_duration" "64"
-		write "/sys/module/cpu_input_boost/parameters/wake_boost_duration" "512"
-		log_i "Tweaked CPU input boost"
+		write "/sys/module/cpu_input_boost/parameters/input_boost_duration" "0"
+		write "/sys/module/cpu_input_boost/parameters/wake_boost_duration" "0"
+		log_i "Disabled CPU input boost"
 	}
 	write "/sys/devices/system/cpu/sched/sched_boost" "0"
 	write "${kernel}slide_boost_enabled" "0"
@@ -97,7 +95,7 @@ boost_tune() {
 io_tune() {
 	for queue in /sys/block/*/queue/; do
 		avail_scheds=`cat "${queue}scheduler"`
-		for sched in cfq noop none; do
+		for sched in cfq noop kyber bfq mq-deadline none; do
 			if [[ "$avail_scheds" == *"$sched"* ]]
 			then
 				write "${queue}scheduler" "$sched"
@@ -108,7 +106,7 @@ io_tune() {
 		write "${queue}iostats" "0"
 		write "${queue}io_poll" "0"
 		write "${queue}rotational" "0"
-		write "${queue}rq_affinity" "0"
+		#write "${queue}rq_affinity" "0"
 		write "${queue}read_ahead_kb" "128"
 		write "${queue}nr_requests" "128"
 	done
@@ -130,7 +128,7 @@ cpu_tune() {
 	done
 	[[ -e "/sys/devices/system/cpu/cpuidle/use_deepest_state" ]] && {
 		write "/sys/devices/system/cpu/cpuidle/use_deepest_state" "1"
-		log_i "Allow CPUs to use it's deepest sleep state"
+		log_i "Allowed CPUs to use it's deepest sleep state"
 	}
 }
 
@@ -177,7 +175,7 @@ schedtune_tune() {
 	write "${stune}camera-daemon/schedtune.prefer_idle" "1"
 	write "${stune}camera-daemon/schedtune.sched_boost" "0"
 	write "${stune}top-app/schedtune.boost" "1"
-	write "${stune}top-app/schedtune.prefer_idle" "1"
+	write "${stune}top-app/schedtune.prefer_idle" "0"
 	write "${stune}top-app/schedtune.sched_boost" "0"
 	write "${stune}schedtune.boost" "0"
 	write "${stune}schedtune.prefer_idle" "0"
@@ -219,10 +217,10 @@ sched_tune() {
 	write "${kernel}sched_min_granularity_ns" "500000"
 	write "${kernel}sched_wakeup_granularity_ns" "2000000"
 	write "${kernel}sched_migration_cost_ns" "5000000"
-	write "${kernel}sched_rt_runtime_us" "950000"
+	write "${kernel}sched_rt_runtime_us" "1000000"
 	write "${kernel}sched_rt_period_us" "1000000"
 	write "${kernel}sched_shares_window_ns" "1000000"
-	write "${kernel}sched_rr_timeslice_ms" "1000"
+	write "${kernel}sched_rr_timeslice_ms" "100"
 	write "${kernel}sched_min_task_util_for_colocation" "0"
 	write "${kernel}sched_min_task_util_for_boost" "0"
 	write "${kernel}sched_nr_migrate" "32"
@@ -247,6 +245,7 @@ sched_tune() {
 	write "/sys/kernel/rcu_normal" "1"
 	write "/sys/devices/system/cpu/sched/hint_enable" "0"
 	write "/proc/sys/dev/tty/ldisc_autoload" "0"
+	write "/sys/devices/virtual/thermal/thermal_message/sconfig" "10"
 	log_i "Tweaked various kernel parameters to a better overall performance"
 }
 
@@ -263,6 +262,8 @@ vm_lmk_tune() {
 	write "${vm}dirty_ratio" "30"
 	write "${vm}dirty_expire_centisecs" "3000"
 	write "${vm}dirty_writeback_centisecs" "3000"
+	write "${vm}dirty_background_ratio_nosys" "10"
+	write "${vm}dirty_expire_centisecs_nosys" "3000"
 	write "${vm}page-cluster" "0"
 	write "${vm}stat_interval" "600"
 	write "${vm}overcommit_memory" "1"
@@ -281,8 +282,10 @@ vm_lmk_tune() {
 	write "${vm}min_free_kbytes" "8192"
 	write "${vm}extra_free_kbytes" "32768"
 	write "${vm}swappiness" "100"
+	write "${vm}swappiness_nosys" "100"
 	write "${vm}reap_mem_on_sigkill" "1"
 	write "/sys/kernel/mm/lru_gen/min_ttl_ms" "1000"
+	write "/sys/kernel/mm/swap/vma_ra_enabled" "true"
 	log_i "Tweaked various VM and LMK parameters for a improved user-experience"
 }
 
@@ -295,7 +298,7 @@ pewq() {
 
 config_tcp() {
 	avail_con=`cat "${tcp}tcp_available_congestion_control"`
-	for con in bbr2 bbr westwood; do
+	for con in bbr2 bbr c2tcp cdg westwood; do
 		if [[ "$avail_con" == *"$con"* ]]
 		then
 			write "${tcp_v4}tcp_congestion_control" "$con"
@@ -414,23 +417,13 @@ blkio() {
 	}
 }
 
-unify_devfreq() {
-	for df in /sys/class/devfreq/*; do
-		write "$df/max_freq" "4294967295"
-		write "$df/min_freq" "0"
-	done
-	log_i "Tweaked devfreq"
-}
-
-
 props() {
 	resetprop -n db.log.slow_query_threshold 0
 	resetprop -n debug.atrace.tags.enableflags 0
 	resetprop -n debug.mdpcomp.logs 0
-	resetprop -n debug.sf.disable_client_composition_cache 0
+	#resetprop -n debug.sf.disable_client_composition_cache 0
 	resetprop -n debug.sf.dump 0
 	resetprop -n libc.debug.malloc 0
-	resetprop -n media.metrics.enabled 0
 	resetprop -n media.stagefright.log-uri false
 	resetprop -n persist.debug.wfd.enable 0
 	resetprop -n persist.sys.strictmode.disable 1
@@ -444,48 +437,52 @@ props() {
 	resetprop -n dalvik.vm.checkjni false
 	resetprop -n dalvik.vm.dex2oat-minidebuginfo false
 	resetprop -n dalvik.vm.minidebuginfo false
-	resetprop -n ro.sf.blurs_are_expensive 1
-	resetprop -n ro.surface_flinger.supports_background_blur 0
 	resetprop -n ro.surface_flinger.enable_layer_caching true
 	resetprop -n debug.sf.layer_caching_active_layer_timeout_ms 1000
-	resetprop -n debug.sf.latch_unsignaled false
-	resetprop -n debug.sf.auto_latch_unsignaled true
-	resetprop -n debug.sf.predict_hwc_composition_strategy 1
+	resetprop -n debug.sf.latch_unsignaled true
+	resetprop -n debug.sf.auto_latch_unsignaled false
+	#resetprop -n debug.sf.predict_hwc_composition_strategy 1
 	resetprop -n arm64.memtag.process.system_server off
-	resetprop -n debug.sf.enable_hwc_vds true
 	resetprop -n debug.sf.enable_layer_caching true
 	resetprop -n persist.vendor.camera.realtimethread 1
-	resetprop -n debug.hwui.renderer skiagl
-	resetprop -n debug.renderengine.backend skiaglthreaded
+	#resetprop -n debug.hwui.renderer skiagl
+	#resetprop -n debug.renderengine.backend skiaglthreaded
 	resetprop -n renderthread.skia.reduceopstasksplitting true
-	resetprop -n ro.surface_flinger.max_frame_buffer_acquired_buffers 3
+	#resetprop -n ro.surface_flinger.max_frame_buffer_acquired_buffers 3
 	resetprop -n sys.use_fifo_ui 1
 	resetprop -n persist.bg.dexopt.enable false 
 	resetprop -n pm.dexopt.disable_bg_dexopt true 
 	resetprop -n debug.hwui.skia_atrace_enabled false
-	resetprop -n debug.hwui.use_hint_manager true
-	resetprop -n debug.hwui.target_cpu_time_percent 30
-	resetprop -n debug.sf.enable_gl_backpressure false
 	resetprop -n persist.debug.sf.enable_layer_lifecycle_manager true
 	resetprop -n debug.sf.enable_small_dirty_detection true
+	
+	#resetprop -n ro.launcher.blur.appLaunch 1
+	#resetprop -n ro.surface_flinger.supports_background_blur 1
+	#resetprop -n ro.sf.blurs_are_expensive 0
+	#resetprop -n persist.sys.sf.disable_blurs false
+	#resetprop -n enable_blurs_on_windows 1
+	#resetprop -n disableBlurs false
+	#resetprop -n ro.sf.blurs_are_caro 0
+	#resetprop -n ro.miui.has_real_blur 1
+	#resetprop -n persist.sys.background_blur_supported true
 
-	resetprop -n debug.sf.hw 1
-	resetprop -n debug.egl.hw 1
-	resetprop -n persist.sys.ui.hw 1
 	resetprop -n debug.gralloc.enable_fb_ubwc 1
-	resetprop -n debug.cpurend.vsync false
-	resetprop -n debug.sf.use_phase_offsets_as_durations 1
-	resetprop -n debug.sf.late.app.duration 16600000
-	resetprop -n debug.sf.earlyGL.sf.duration 16600000
-	resetprop -n debug.sf.earlyGL.app.duration 16600000
-	resetprop -n debug.sf.early.sf.duration 16600000
-	resetprop -n debug.sf.early.app.duration 16600000
-	resetprop -n debug.sf.late.sf.duration 10500000
-	resetprop -n debug.composition.type gpu
-	resetprop -n persist.sys.composition.type gpu
+	#resetprop -n hwui.disable_vsync false
+	#resetprop -n debug.cpurend.vsync true
+	#resetprop -n debug.composition.type dyn
+	#resetprop -n persist.sys.composition.type dyn
 	resetprop -n ro.iorapd.enable false
 	resetprop -n iorapd.perfetto.enable false
 	resetprop -n iorapd.readahead.enable false
+	
+	resetprop -n vendor.perf.framepacing.enable 1
+	resetprop -n vendor.power.pasr.enabled false
+	resetprop -n persist.mm.enable.prefetch true
+	resetprop -n debug.sdm.support_writeback 0
+	resetprop -n persist.vendor.radio.add_power_save 1
+	resetprop -n ro.vendor.perf.scroll_opt true
+	resetprop -n ro.sf.force_hwc_brightness 1
+	resetprop -n zygote.critical_window.minute 10
 	log_i "Applied prop tweaks"
 }
 
@@ -500,7 +497,7 @@ cmd_sys() {
 	settings put secure screensaver_activate_on_sleep 0 
 	settings put secure screensaver_enabled 0
 	settings put secure send_action_app_error 0
-	device_config put activity_manager max_cached_processes 256
+	device_config put activity_manager max_cached_processes 1024
 	device_config put activity_manager max_phantom_processes 2147483647
 	settings put global settings_enable_monitor_phantom_procs false
 	device_config put activity_manager max_empty_time_millis 43200000
@@ -518,7 +515,7 @@ cmd_sys() {
 	device_config put runtime_native_boot disable_lock_profiling true
 	device_config put activity_manager use_oom_re_ranking true
 	
-	device_config put activity_manager_native_boot use_freezer false
+	device_config put activity_manager_native_boot use_freezer true
 	device_config put activity_manager proactive_kills_enabled false
 	device_config put activity_manager uses_weight true
 	device_config put runtime_native_boot enable_generational_cc true
@@ -532,9 +529,7 @@ cmd_sys() {
 	device_config put runtime_native_boot iorap_perfetto_enable false
 	device_config put runtime_native_boot iorap_readahead_enable false
 	device_config put activity_manager_native_boot offload_queue_enabled true
-	device_config put surface_flinger_native_boot max_frame_buffer_acquired_buffers 3
-	settings put global fstrim_mandatory_interval 86400000
-	settings put global storage_benchmark_interval 9223372036854775807
+	#device_config put surface_flinger_native_boot max_frame_buffer_acquired_buffers 3
 	log_i "Tweaked system properties"
 }
 
@@ -552,7 +547,6 @@ disable_debug
 stop_services
 io_tune
 boost_tune
-unify_devfreq
 cpu_tune
 gpu_tune
 schedtune_tune
