@@ -483,6 +483,16 @@ props() {
 	resetprop -n ro.vendor.perf.scroll_opt true
 	resetprop -n ro.sf.force_hwc_brightness 1
 	resetprop -n zygote.critical_window.minute 10
+	resetprop -n ro.zram.mark_idle_delay_mins 60
+	resetprop -n ro.zram.first_wb_delay_mins 1440
+	resetprop -n ro.zram.periodic_wb_delay_hours 24
+	resetprop -n debug.sf.enable_hwc_vds 0
+	resetprop -n persist.sys.fuse.passthrough.enable true
+	resetprop -n debug.sf.enable_advanced_sf_phase_offset 1
+	resetprop -n debug.sf.high_fps_early_gl_phase_offset_ns -4000000
+	resetprop -n debug.sf.high_fps_early_phase_offset_ns -4000000
+	resetprop -n debug.sf.high_fps_late_app_phase_offset_ns 1000000
+	resetprop -n debug.sf.high_fps_late_sf_phase_offset_ns -4000000
 	log_i "Applied prop tweaks"
 }
 
