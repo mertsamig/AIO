@@ -428,12 +428,12 @@ props() {
 	resetprop -n debug.hwui.skia_atrace_enabled false
 	resetprop -n debug.mdpcomp.logs 0
 	resetprop -n debug.renderengine.backend skiaglthreaded
-	resetprop -n debug.sf.auto_latch_unsignaled false
+	resetprop -n debug.sf.auto_latch_unsignaled true
 	resetprop -n debug.sf.disable_client_composition_cache 0
 	resetprop -n debug.sf.dump 0
 	resetprop -n debug.sf.enable_layer_caching true
 	resetprop -n debug.sf.enable_small_dirty_detection true
-	resetprop -n debug.sf.latch_unsignaled true
+	resetprop -n debug.sf.latch_unsignaled false
 	resetprop -n debug.sf.layer_caching_active_layer_timeout_ms 1000
 	resetprop -n debug.sf.predict_hwc_composition_strategy 1
 	resetprop -n libc.debug.malloc 0
@@ -462,13 +462,11 @@ props() {
 	resetprop -n ro.launcher.blur.appLaunch 1
 	resetprop -n ro.miui.has_real_blur 1
 	resetprop -n ro.sf.blurs_are_caro 0
-	resetprop -n ro.sf.blurs_are_expensive 0
+	resetprop -n ro.sf.blurs_are_expensive 1
 	resetprop -n ro.surface_flinger.supports_background_blur 1
 
-	#resetprop -n debug.composition.type dyn
-	#resetprop -n debug.cpurend.vsync true
-	#resetprop -n hwui.disable_vsync false
-	#resetprop -n persist.sys.composition.type dyn
+	resetprop -n debug.cpurend.vsync false
+	resetprop -n hwui.disable_vsync true
 	resetprop -n debug.gralloc.enable_fb_ubwc 1
 	resetprop -n iorapd.perfetto.enable false
 	resetprop -n iorapd.readahead.enable false
@@ -487,18 +485,6 @@ props() {
 	resetprop -n ro.zram.periodic_wb_delay_hours 24
 	resetprop -n debug.sf.enable_hwc_vds 0
 	resetprop -n persist.sys.fuse.passthrough.enable true
-	resetprop -n touch.size.scale 1
-	resetprop -n touch.size.bias 0
-	resetprop -n touch.size.isSummed 0
-	resetprop -n touch.pressure.scale 0.001
-	resetprop -n touch.distance.calibration none
-	resetprop -n touch.distance.scale 0
-	resetprop -n touch.coverage.calibration box
-	resetprop -n touch.gestureMode spots
-	resetprop -n MultitouchSettleInterval 1ms
-	resetprop -n MultitouchMinDistance 1px
-	resetprop -n TapInterval 1ms
-	resetprop -n TapSlop 1px
 	resetprop -n suspend.short_suspend_threshold_millis 2000
 	resetprop -n suspend.short_suspend_backoff_enabled true
 	resetprop -n suspend.max_sleep_time_millis 40000
@@ -510,6 +496,27 @@ props() {
 	resetprop -n ro.surface_flinger.set_touch_timer_ms 200
 	resetprop -n ro.surface_flinger.set_display_power_timer_ms 1000
 	resetprop -n ro.surface_flinger.use_content_detection_for_refresh_rate true
+	resetprop -n dalvik.vm.dex2oat64.enabled true
+	resetprop -n vidc.enc.dcvs.extra-buff-count 2
+	resetprop -n persist.log.tag.AnalyticsService S
+	resetprop -n persist.log.tag.KernelCpuUidActiveTimeReader S
+	resetprop -n persist.log.tag.Tracer S
+	resetprop -n persist.log.tag.NearbySharing S
+	resetprop -n persist.log.tag.IntervalStats S
+	resetprop -n persist.log.tag.CompatibilityChangeReporter S
+	resetprop -n persist.log.tag.SQLiteLog S
+	resetprop -n persist.log.tag.wificond S
+	resetprop -n persist.log.tag.b/223498680 S
+	resetprop -n persist.log.tag.TrafficStats S
+	resetprop -n persist.log.tag.ContrastColorUtil S
+	resetprop -n vendor.display.disable_rotator_downscale 1
+	resetprop -n debug.sf.use_phase_offsets_as_durations 1
+	resetprop -n debug.sf.late.sf.duration 10500000
+	resetprop -n debug.sf.late.app.duration 20500000
+	resetprop -n debug.sf.early.sf.duration 21000000
+	resetprop -n debug.sf.early.app.duration 16500000
+	resetprop -n debug.sf.earlyGl.sf.duration 13500000
+	resetprop -n debug.sf.earlyGl.app.duration 21000000
 	log_i "Applied prop tweaks"
 }
 
