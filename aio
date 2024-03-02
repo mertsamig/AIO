@@ -36,9 +36,9 @@ write() {
 }
 
 kill_svc() {
-	stop "$1"
 	pkill -SIGTERM "$1"
 	pkill -KILL "$1"
+	stop "$1"
 }
 
 bl="/dev/blkio/"
@@ -567,7 +567,18 @@ cmd_sys() {
 }
 
 procs_tune() {
-	declare -a procs=("rcu_sched" "writeback" "system" "zygote" "system_server" "surfaceflinger" "netd" "com.android.systemui" "android.process.acore" "$(getprop ro.home_app)")
+	ps_ret="$(ps -Ao pid,args)"
+	change_task_nice() {
+		for temp_pid in $(echo "$ps_ret" | grep -i -E "$1" | awk '{print $1}'); do
+			for temp_tid in $(ls "/proc/$temp_pid/task/"); do
+				renice -n +40 -p "$temp_tid"
+				renice -n -19 -p "$temp_tid"
+				renice -n -20 -p "$temp_tid"
+			done
+		done
+	}
+	launcher_pkg="$(pm resolve-activity -a "android.intent.action.MAIN" -c "android.intent.category.HOME" | grep packageName | head -1 | cut -d= -f2)"
+	procs=("rcu_sched" "writeback" "system" "zygote" "system_server" "surfaceflinger" "netd" "com.android.systemui" "android.process.acore" "$launcher_pkg" "servicemanag" "kgsl_worker_thread" "devfreq_boost" "mali_jd_thread" "mali_event_thread" "thread_fence" "speedup_resume_wq" "load_tp_fw_wq" "tcm_freq_hop" "touch_delta_wq" "tp_async" "wakeup_clk_wq" "kblockd" "rcu_tasks_kthre" "ufs_clk_gating" "mmc_clk_gate" "kverityd")
 	for process in "${procs[@]}"; do
 		pids=( $(pidof "$process") )
 		if [ ${#pids[@]} -eq 0 ]; then
