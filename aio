@@ -62,7 +62,36 @@ front=$((($RAM*2/100)*1024/4))
 visible=$((($RAM*3/100)*1024/4))
 
 stop_services() {
-	services=("perfd" "mpdecision" "charge_logger" "vendor.perfservice" "vendor.cnss_diag" "vendor.tcpdump" "vendor.ipacm-diag" "perfservice" "cnss_diag" "tcpdump" "ipacm-diag" "statsd" "logd" "traced" "traced_probes" "idd-logreader" "idd-logreadermain" "statscompanion" "ramdump" "subsystem_ramdump" "logcat" "logcatd" "stats" "dumpstate" "aplogd" "wlan_logging" "tombstoned" "mediametrics")
+	services=(
+		"aplogd"
+		"charge_logger"
+		"cnss_diag"
+		"dumpstate"
+		"idd-logreader"
+		"idd-logreadermain"
+		"ipacm-diag"
+		"logcat"
+		"logcatd"
+		"logd"
+		"mediametrics"
+		"mpdecision"
+		"perfd"
+		"perfservice"
+		"ramdump"
+		"stats"
+		"statscompanion"
+		"statsd"
+		"subsystem_ramdump"
+		"tcpdump"
+		"tombstoned"
+		"traced"
+		"traced_probes"
+		"vendor.cnss_diag"
+		"vendor.ipacm-diag"
+		"vendor.perfservice"
+		"vendor.tcpdump"
+		"wlan_logging"
+	)
 	for service in "${services[@]}"; do
     	kill_svc "$service"
 	done
@@ -361,9 +390,27 @@ emmc_clk_scl() {
 }
 
 disable_debug() {
-	for i in debug_mask log_level debug_level debug_mode enable_ramdumps edac_mc_log enable_event_log log_ue log_ce log_ecn_error snapshot_crashdumper seclog compat-log log_enabled tracing_on mballoc_debug; do
-		for o in $(find /sys/ -type f -name "$i"); do
-			write "$o" "0"
+	useless=(
+		"compat-log"
+		"debug_level"
+		"debug_mask"
+		"debug_mode"
+		"edac_mc_log"
+		"enable_event_log"
+		"enable_ramdumps"
+		"log_ce"
+		"log_ecn_error"
+		"log_enabled"
+		"log_level"
+		"log_ue"
+		"mballoc_debug"
+		"seclog"
+		"snapshot_crashdumper"
+		"tracing_on"
+	)
+	for keyword in "${useless[@]}"; do
+		for file in $(find /sys/ -type f -name "$keyword"); do
+			write "$file" "0"
 		done
 	done
 	write "${kernel}compat-log" "0"
@@ -506,7 +553,6 @@ props() {
 	resetprop -n persist.log.tag.CompatibilityChangeReporter S
 	resetprop -n persist.log.tag.SQLiteLog S
 	resetprop -n persist.log.tag.wificond S
-	resetprop -n persist.log.tag.b/223498680 S
 	resetprop -n persist.log.tag.TrafficStats S
 	resetprop -n persist.log.tag.ContrastColorUtil S
 	resetprop -n vendor.display.disable_rotator_downscale 1
@@ -578,19 +624,37 @@ procs_tune() {
 		done
 	}
 	launcher_pkg="$(pm resolve-activity -a "android.intent.action.MAIN" -c "android.intent.category.HOME" | grep packageName | head -1 | cut -d= -f2)"
-	procs=("rcu_sched" "writeback" "system" "zygote" "system_server" "surfaceflinger" "netd" "com.android.systemui" "android.process.acore" "$launcher_pkg" "servicemanag" "kgsl_worker_thread" "devfreq_boost" "mali_jd_thread" "mali_event_thread" "thread_fence" "speedup_resume_wq" "load_tp_fw_wq" "tcm_freq_hop" "touch_delta_wq" "tp_async" "wakeup_clk_wq" "kblockd" "rcu_tasks_kthre" "ufs_clk_gating" "mmc_clk_gate" "kverityd")
+	procs=(
+		"$launcher_pkg"
+		"android.process.acore"
+		"com.android.systemui"
+		"devfreq_boost"
+		"kblockd"
+		"kgsl_worker_thread"
+		"kverityd"
+		"load_tp_fw_wq"
+		"mali_event_thread"
+		"mali_jd_thread"
+		"mmc_clk_gate"
+		"netd"
+		"rcu_sched"
+		"rcu_tasks_kthre"
+		"servicemanag"
+		"speedup_resume_wq"
+		"surfaceflinger"
+		"system"
+		"system_server"
+		"tcm_freq_hop"
+		"thread_fence"
+		"touch_delta_wq"
+		"tp_async"
+		"ufs_clk_gating"
+		"wakeup_clk_wq"
+		"writeback"
+		"zygote"
+	)
 	for process in "${procs[@]}"; do
-		pids=( $(pidof "$process") )
-		if [ ${#pids[@]} -eq 0 ]; then
-			echo "No PID found for process: $process"
-		elif [ ${#pids[@]} -eq 1 ]; then
-			renice -n -20 -p "${pids[0]}"
-		else
-			echo "Multiple PIDs found for process: $process"
-			for pid in "${pids[@]}"; do
-				renice -n -20 -p "$pid"
-			done
-		fi
+		change_task_nice "$1"
 	done
 	log_i "Tweaked system processes priorities"
 }
