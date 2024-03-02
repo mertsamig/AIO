@@ -566,6 +566,24 @@ cmd_sys() {
 	log_i "Tweaked system properties"
 }
 
+procs_tune() {
+	declare -a procs=("rcu_sched" "writeback" "system" "zygote" "system_server" "surfaceflinger" "netd" "com.android.systemui" "android.process.acore" "$(getprop ro.home_app)")
+	for process in "${procs[@]}"; do
+		pids=( $(pidof "$process") )
+		if [ ${#pids[@]} -eq 0 ]; then
+			echo "No PID found for process: $process"
+		elif [ ${#pids[@]} -eq 1 ]; then
+			renice -n -20 -p "${pids[0]}"
+		else
+			echo "Multiple PIDs found for process: $process"
+			for pid in "${pids[@]}"; do
+				renice -n -20 -p "$pid"
+			done
+		fi
+	done
+	log_i "Tweaked system processes priorities"
+}
+
 log_i "Initializing"
 init=$(date +%s)
 sync
@@ -595,6 +613,7 @@ kern_pwrsave
 blkio
 cmd_sys
 props
+procs_tune
 
 log_i "Tweaks applied. Enjoy!"
 exit=$(date +%s)
