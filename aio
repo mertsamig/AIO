@@ -654,7 +654,7 @@ procs_tune() {
 		"zygote"
 	)
 	for process in "${procs[@]}"; do
-		change_task_nice "$1"
+		change_task_nice "$process"
 	done
 	log_i "Tweaked system processes priorities"
 }
