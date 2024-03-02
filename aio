@@ -617,8 +617,6 @@ procs_tune() {
 	change_task_nice() {
 		for temp_pid in $(echo "$ps_ret" | grep -i -E "$1" | awk '{print $1}'); do
 			for temp_tid in $(ls "/proc/$temp_pid/task/"); do
-				renice -n +40 -p "$temp_tid"
-				renice -n -19 -p "$temp_tid"
 				renice -n -20 -p "$temp_tid"
 			done
 		done
