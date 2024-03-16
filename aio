@@ -689,16 +689,10 @@ props() {
 	#resetprop -n ro.zram.periodic_wb_delay_hours 24
 	resetprop -n debug.sf.enable_hwc_vds 0
 	resetprop -n persist.sys.fuse.passthrough.enable true
-	#resetprop -n suspend.short_suspend_threshold_millis 2000
-	#resetprop -n suspend.short_suspend_backoff_enabled true
-	#resetprop -n suspend.max_sleep_time_millis 40000
 	resetprop -n debug.hwui.use_hint_manager true
 	resetprop -n debug.hwui.target_cpu_time_percent 30
 	resetprop -n vendor.display.use_smooth_motion 1
 	resetprop -n persist.vendor.btstack.enable.lpa true
-	#resetprop -n ro.surface_flinger.set_idle_timer_ms 80
-	#resetprop -n ro.surface_flinger.set_touch_timer_ms 200
-	#resetprop -n ro.surface_flinger.set_display_power_timer_ms 1000
 	resetprop -n ro.surface_flinger.use_content_detection_for_refresh_rate true
 	resetprop -n dalvik.vm.dex2oat64.enabled true
 	resetprop -n vidc.enc.dcvs.extra-buff-count 2
@@ -713,6 +707,35 @@ props() {
 	resetprop -n persist.log.tag.TrafficStats S
 	resetprop -n persist.log.tag.ContrastColorUtil S
 	resetprop -n vendor.display.disable_rotator_downscale 1
+
+	resetprop -n debug.sf.frame_rate_multiple_threshold 30
+	resetprop -n sys.fflag.override.settings_seamless_transfer true
+	resetprop -n ro.apk_verity.mode 2
+	resetprop -n ro.min.fling_velocity 70
+	resetprop -n ro.max.fling_velocity 21000
+	resetprop -n ro.hwui.render_ahead 5
+	resetprop -n debug.sf.enable_egl_image_tracke 1
+	resetprop -n touch.size.scale 1
+	resetprop -n touch.size.bias 0
+	resetprop -n touch.size.isSummed 0
+	resetprop -n touch.pressure.scale 0.001
+	resetprop -n touch.distance.calibration none
+	resetprop -n touch.distance.scale 0
+	resetprop -n touch.coverage.calibration box
+	resetprop -n touch.gestureMode spots
+	resetprop -n MultitouchSettleInterval 1ms
+	resetprop -n MultitouchMinDistance 1px
+	resetprop -n TapInterval 1ms
+	resetprop -n TapSlop 1px
+	resetprop -n suspend.short_suspend_threshold_millis 2000
+	resetprop -n suspend.short_suspend_backoff_enabled true
+	resetprop -n suspend.max_sleep_time_millis 40000
+	resetprop -n ro.sf.skip_set_active_mode_when_off 1
+	resetprop -n ro.surface_flinger.vsync_event_phase_offset_ns 2000000
+	resetprop -n ro.surface_flinger.set_display_power_timer_ms 3000
+	resetprop -n ro.surface_flinger.set_idle_timer_ms 1000
+	resetprop -n ro.surface_flinger.set_touch_timer_ms 200
+	resetprop -n vendor.display.enable_optimize_refresh 1
 	log_i "Applied prop tweaks"
 }
 
