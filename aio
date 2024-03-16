@@ -42,7 +42,9 @@ kill_svc() {
 }
 
 bl="/dev/blkio/"
+cpuctl="/dev/cpuctl/"
 dbg="/sys/kernel/debug/sched_features"
+f2fs="/sys/fs/f2fs/"
 fs="/proc/sys/fs/"
 gpu="/sys/class/kgsl/kgsl-3d0/"
 kdbg="/sdcard/aio/aio_dbg.log"
@@ -50,7 +52,9 @@ kernel="/proc/sys/kernel/"
 klog="/sdcard/aio/aio.log"
 lmk="/sys/module/lowmemorykiller/parameters/"
 stune="/dev/stune/"
+t_msg="/sys/class/thermal/thermal_message/"
 tcp_v4="/proc/sys/net/ipv4/"
+therm="/sys/class/thermal/tz-by-name/"
 vm="/proc/sys/vm/"
 
 RAM=$(free -m | awk '/Mem:/{print $2}')
@@ -97,6 +101,53 @@ stop_services() {
 	done
 	rm -rf "/data/system/perfd/default_values" "/data/vendor/perfd/default_values" "/data/system/mcd/df" "/data/system/migt/migt"
 	log_i "Disabled few debug services and userspace daemons"
+}
+
+therm_pol_set() {
+	[[ -d "$therm" ]] && {
+		write "${therm}aoss0-usr/policy" "step_wise"
+		write "${therm}camera-flash-therm-adc/policy" "step_wise"
+		write "${therm}camera-ftherm-adc/policy" "step_wise"
+		write "${therm}charger-skin-therm-adc/policy" "step_wise"
+		write "${therm}conn-therm-adc/policy" "step_wise"
+		write "${therm}cpu-0-0-usr/policy" "step_wise"
+		write "${therm}cpu-0-1-usr/policy" "step_wise"
+		write "${therm}cpu-0-2-usr/policy" "step_wise"
+		write "${therm}cpu-0-3-usr/policy" "step_wise"
+		write "${therm}cpu-1-0-usr/policy" "step_wise"
+		write "${therm}cpu-1-1-usr/policy" "step_wise"
+		write "${therm}cpu-1-2-usr/policy" "step_wise"
+		write "${therm}cpu-1-3-usr/policy" "step_wise"
+		write "${therm}cpuss-0-usr/policy" "step_wise"
+		write "${therm}cpuss-1-usr/policy" "step_wise"
+		write "${therm}cpuss-2-usr/policy" "step_wise"
+		write "${therm}emmc-ufs-therm-adc" "step_wise"
+		write "${therm}gpu-usr/policy" "step_wise"
+		write "${therm}lmh-dcvs-00/policy" "step_wise"
+		write "${therm}lmh-dcvs-01/policy" "step_wise"
+		write "${therm}modem0-pa0-usr/policy" "step_wise"
+		write "${therm}modem0-pa1-usr/policy" "step_wise"
+		write "${therm}modem1-mmw0-usr/policy" "step_wise"
+		write "${therm}modem1-mmw1-usr/policy" "step_wise"
+		write "${therm}modem1-mmw2-usr/policy" "step_wise"
+		write "${therm}modem1-mmw3-usr/policy" "step_wise"
+		write "${therm}modem1-modem-usr/policy" "step_wise"
+		write "${therm}modem1-pa-mdm-usr/policy" "step_wise"
+		write "${therm}modem1-pa-wtr-usr/policy" "step_wise"
+		write "${therm}modem1-pa0-usr/policy" "step_wise"
+		write "${therm}modem1-pa1-usr/policy" "step_wise"
+		write "${therm}modem1-pa2-usr/policy" "step_wise"
+		write "${therm}modem1-qfe-wtr-usr/policy" "step_wise"
+		write "${therm}modem1-skin-usr/policy" "step_wise"
+		write "${therm}quiet-therm-adc/policy" "step_wise"
+		write "${therm}rf-pa0-therm-adc/policy" "step_wise"
+		write "${therm}rf-pa1-therm-adc/policy" "step_wise"
+		write "${therm}sdm-therm-adc/policy" "step_wise"
+		write "${therm}skin-therm-adc/policy" "step_wise"
+		write "${therm}xo-therm-adc/policy" "step_wise"
+		log_i "Tweaked thermal policies"
+	}
+	write "${t_msg}sconfig" "10"
 }
 
 boost_tune() {
@@ -171,6 +222,72 @@ gpu_tune() {
 	write "${gpu}pwrnap" "1"
 	write "${gpu}thermal_pwrlevel" "0"
 	write "${gpu}throttling" "0"
+	write "${gpug}mali_touch_boost_level" "0"
+	write "${gpu}boost" "0"
+	write "${gpu}cl_boost_disable" "0"
+	write "${gpu}devfreq/gpufreq/mali_ondemand/no_vsync_downdifferential" "40"
+	write "${gpu}devfreq/gpufreq/mali_ondemand/no_vsync_upthreshold" "65"
+	write "${gpu}devfreq/gpufreq/mali_ondemand/vsync" "1"
+	write "${gpu}devfreq/gpufreq/mali_ondemand/vsync_downdifferential" "45"
+	write "${gpu}devfreq/gpufreq/mali_ondemand/vsync_upthreshold" "70"
+	write "${gpu}dvfs" "1"
+	write "${gpu}highspeed_delay" "0"
+	write "${gpu}highspeed_load" "86"
+	write "${gpu}power_policy" "always_on"
+	write "${gpu}tmu" "1"
+	[[ -d "/sys/module/ged/" ]] && {
+		write "/sys/module/ged/parameters/boost_amp" "0"
+		write "/sys/module/ged/parameters/boost_extra" "0"
+		write "/sys/module/ged/parameters/boost_gpu_enable" "0"
+		write "/sys/module/ged/parameters/enable_cpu_boost" "0"
+		write "/sys/module/ged/parameters/enable_game_self_frc_detect" "0"
+		write "/sys/module/ged/parameters/enable_gpu_boost" "0"
+		write "/sys/module/ged/parameters/ged_force_mdp_enable" "0"
+		write "/sys/module/ged/parameters/ged_log_perf_trace_enable" "0"
+		write "/sys/module/ged/parameters/ged_log_trace_enable" "0"
+		write "/sys/module/ged/parameters/ged_monitor_3D_fence_debug" "0"
+		write "/sys/module/ged/parameters/ged_monitor_3D_fence_disable" "1"
+		write "/sys/module/ged/parameters/ged_monitor_3D_fence_systrace" "0"
+		write "/sys/module/ged/parameters/ged_smart_boost" "1"
+		write "/sys/module/ged/parameters/gpu_cust_boost_freq" "0"
+		write "/sys/module/ged/parameters/gpu_debug_enable" "0"
+		write "/sys/module/ged/parameters/gpu_dvfs_enable" "1"
+		write "/sys/module/ged/parameters/gpu_idle" "100"
+		write "/sys/module/ged/parameters/gx_3D_benchmark_on" "0"
+		write "/sys/module/ged/parameters/gx_boost_on" "0"
+		write "/sys/module/ged/parameters/gx_dfps" "0"
+		write "/sys/module/ged/parameters/gx_force_cpu_boost" "0"
+		write "/sys/module/ged/parameters/gx_frc_mode" "0"
+		write "/sys/module/ged/parameters/gx_game_mode" "0"
+		write "/sys/module/ged/parameters/is_GED_KPI_enabled" "1"
+		write "/sys/module/ged/parameters/ged_boost_enable" "0"
+	}
+	[[ -d "/sys/kernel/gbe/" ]] && {
+		write "/sys/kernel/gbe/gbe_enable1" "0"
+		write "/sys/kernel/gbe/gbe_enable2" "0"
+		write "/sys/kernel/gbe/gbe2_max_boost_cnt" "5"
+	}
+	[[ -d "/proc/gpufreq/" ]] && {
+		write "/proc/gpufreq/gpufreq_input_boost" "0"
+		write "/proc/gpufreq/gpufreq_limited_low_batt_volt_ignore" "0"
+		write "/proc/gpufreq/gpufreq_limited_low_batt_volume_ignore" "0"
+		write "/proc/gpufreq/gpufreq_limited_oc_ignore" "0"
+		write "/proc/gpufreq/gpufreq_limited_thermal_ignore" "0"
+		write "/proc/gpufreq/gpufreq_opp_freq" "0"
+		write "/proc/gpufreq/gpufreq_opp_stress_test" "0"
+	}
+	[[ -d "/sys/kernel/ged/" ]] && {
+		write "/sys/kernel/ged/hal/dcs_mode" "0"
+		write "/sys/kernel/ged/hal/dvfs_margin_value" "20"
+		write "/sys/kernel/ged/hal/timer_base_dvfs_margin" "20"
+	}
+	[[ -d "/proc/mali/" ]] && {
+		write "/proc/mali/always_on" "0"
+		write "/proc/mali/dvfs_enable" "1"
+	}
+	[[ -d "/proc/gpufreqv2/" ]] && write "/proc/gpufreqv2/fix_target_opp_index" "-1"
+	[[ -d "/sys/module/sspm_v3/" ]] && write "/sys/module/sspm_v3/holders/ged/parameters/is_GED_KPI_enabled" "1"
+	[[ -d "/sys/module/pvrsrvkm/" ]] && write "/sys/module/pvrsrvkm/parameters/gpu_dvfs_enable" "1"
 	[[ -d "/sys/module/simple_gpu_algorithm/parameters/" ]] && {
 		write "/sys/module/simple_gpu_algorithm/parameters/simple_gpu_activate" "0"
 		log_i "Disabled SGPU algorithm"
@@ -206,9 +323,33 @@ schedtune_tune() {
 	write "${stune}schedtune.prefer_idle" "0"
 	write "${stune}schedtune.sched_boost" "0"
 	write "${stune}top-app/schedtune.boost" "1"
-	write "${stune}top-app/schedtune.prefer_idle" "0"
+	write "${stune}top-app/schedtune.prefer_idle" "1"
 	write "${stune}top-app/schedtune.sched_boost" "0"
 	log_i "Tweaked schedtune settings"
+}
+
+uclamp_tune() {
+	[[ -e "${cpuctl}top-app/cpu.uclamp.max" ]] && {
+		write "${cpuctl}background/cpu.uclamp.boosted" "0"
+		write "${cpuctl}background/cpu.uclamp.latency_sensitive" "0"
+		write "${cpuctl}background/cpu.uclamp.max" "768"
+		write "${cpuctl}background/cpu.uclamp.min" "0"
+		write "${cpuctl}foreground/cpu.uclamp.boosted" "0"
+		write "${cpuctl}foreground/cpu.uclamp.latency_sensitive" "0"
+		write "${cpuctl}foreground/cpu.uclamp.max" "max"
+		write "${cpuctl}foreground/cpu.uclamp.min" "5"
+		write "${cpuctl}system-background/cpu.uclamp.boosted" "0"
+		write "${cpuctl}system-background/cpu.uclamp.latency_sensitive" "0"
+		write "${cpuctl}system-background/cpu.uclamp.max" "1024"
+		write "${cpuctl}system-background/cpu.uclamp.min" "0"
+		write "${cpuctl}top-app/cpu.uclamp.boosted" "1"
+		write "${cpuctl}top-app/cpu.uclamp.latency_sensitive" "1"
+		write "${cpuctl}top-app/cpu.uclamp.max" "max"
+		write "${cpuctl}top-app/cpu.uclamp.min" "10"
+		write "${kernel}sched_util_clamp_max" "1024"
+		write "${kernel}sched_util_clamp_min" "1024"
+		log_i "Tweaked Uclamp parameters"
+	}
 }
 
 config_fs() {
@@ -269,7 +410,6 @@ sched_tune() {
 	write "/proc/sys/dev/tty/ldisc_autoload" "0"
 	write "/sys/devices/system/cpu/cpufreq/hotplug/cpu_hotplug_disable" "1"
 	write "/sys/devices/system/cpu/sched/hint_enable" "0"
-	write "/sys/devices/virtual/thermal/thermal_message/sconfig" "10"
 	write "/sys/kernel/debug/msm_vidc/disable_thermal_mitigation" "0"
 	write "/sys/kernel/debug/msm_vidc/fw_low_power_mode" "1"
 	write "/sys/kernel/rcu_expedited" "0"
@@ -453,6 +593,16 @@ disable_tb() {
 	}
 }
 
+config_f2fs() {
+	for i in ${f2fs}*/; do
+		write "${i}cp_interval" "200"
+		write "${i}gc_urgent_sleep_time" "50"
+		write "${i}iostat_enable" "0"
+		write "${i}min_fsync_blocks" "20"
+	done
+	log_i "Tweaked F2FS parameters"
+}
+
 blkio() {
 	[[ -d "$bl" ]] && {
 		write "${bl}background/blkio.group_idle" "0"
@@ -460,6 +610,13 @@ blkio() {
 		write "${bl}blkio.group_idle" "2000"
 		write "${bl}blkio.weight" "1000"
 		log_i "Tweaked blkio"
+	}
+}
+
+disable_mtk_thrtl() {
+	[[ -e "${t_msg}market_download_limit" ]] && {
+		write "${t_msg}market_download_limit" "0"
+		write "${t_msg}modem_limit" "0"
 	}
 }
 
@@ -481,7 +638,7 @@ props() {
 	resetprop -n debug.sf.enable_layer_caching true
 	resetprop -n debug.sf.enable_small_dirty_detection true
 	resetprop -n debug.sf.latch_unsignaled false
-	resetprop -n debug.sf.layer_caching_active_layer_timeout_ms 1000
+	#resetprop -n debug.sf.layer_caching_active_layer_timeout_ms 1000
 	resetprop -n debug.sf.predict_hwc_composition_strategy 1
 	resetprop -n libc.debug.malloc 0
 	resetprop -n media.stagefright.log-uri false
@@ -512,8 +669,8 @@ props() {
 	resetprop -n ro.sf.blurs_are_expensive 1
 	resetprop -n ro.surface_flinger.supports_background_blur 1
 
-	resetprop -n debug.cpurend.vsync false
-	resetprop -n hwui.disable_vsync true
+	#resetprop -n debug.cpurend.vsync false
+	#resetprop -n hwui.disable_vsync true
 	resetprop -n debug.gralloc.enable_fb_ubwc 1
 	resetprop -n iorapd.perfetto.enable false
 	resetprop -n iorapd.readahead.enable false
@@ -526,22 +683,22 @@ props() {
 	resetprop -n persist.vendor.radio.add_power_save 1
 	resetprop -n ro.vendor.perf.scroll_opt true
 	resetprop -n ro.sf.force_hwc_brightness 1
-	resetprop -n zygote.critical_window.minute 10
-	resetprop -n ro.zram.mark_idle_delay_mins 60
-	resetprop -n ro.zram.first_wb_delay_mins 1440
-	resetprop -n ro.zram.periodic_wb_delay_hours 24
+	#resetprop -n zygote.critical_window.minute 10
+	#resetprop -n ro.zram.mark_idle_delay_mins 60
+	#resetprop -n ro.zram.first_wb_delay_mins 1440
+	#resetprop -n ro.zram.periodic_wb_delay_hours 24
 	resetprop -n debug.sf.enable_hwc_vds 0
 	resetprop -n persist.sys.fuse.passthrough.enable true
-	resetprop -n suspend.short_suspend_threshold_millis 2000
-	resetprop -n suspend.short_suspend_backoff_enabled true
-	resetprop -n suspend.max_sleep_time_millis 40000
+	#resetprop -n suspend.short_suspend_threshold_millis 2000
+	#resetprop -n suspend.short_suspend_backoff_enabled true
+	#resetprop -n suspend.max_sleep_time_millis 40000
 	resetprop -n debug.hwui.use_hint_manager true
 	resetprop -n debug.hwui.target_cpu_time_percent 30
 	resetprop -n vendor.display.use_smooth_motion 1
 	resetprop -n persist.vendor.btstack.enable.lpa true
-	resetprop -n ro.surface_flinger.set_idle_timer_ms 80
-	resetprop -n ro.surface_flinger.set_touch_timer_ms 200
-	resetprop -n ro.surface_flinger.set_display_power_timer_ms 1000
+	#resetprop -n ro.surface_flinger.set_idle_timer_ms 80
+	#resetprop -n ro.surface_flinger.set_touch_timer_ms 200
+	#resetprop -n ro.surface_flinger.set_display_power_timer_ms 1000
 	resetprop -n ro.surface_flinger.use_content_detection_for_refresh_rate true
 	resetprop -n dalvik.vm.dex2oat64.enabled true
 	resetprop -n vidc.enc.dcvs.extra-buff-count 2
@@ -556,20 +713,13 @@ props() {
 	resetprop -n persist.log.tag.TrafficStats S
 	resetprop -n persist.log.tag.ContrastColorUtil S
 	resetprop -n vendor.display.disable_rotator_downscale 1
-	resetprop -n debug.sf.use_phase_offsets_as_durations 1
-	resetprop -n debug.sf.late.sf.duration 10500000
-	resetprop -n debug.sf.late.app.duration 20500000
-	resetprop -n debug.sf.early.sf.duration 21000000
-	resetprop -n debug.sf.early.app.duration 16500000
-	resetprop -n debug.sf.earlyGl.sf.duration 13500000
-	resetprop -n debug.sf.earlyGl.app.duration 21000000
 	log_i "Applied prop tweaks"
 }
 
 cmd_sys() {
 	cmd looper_stats disable
 	cmd power set-fixed-performance-mode-enabled true
-	device_config put activity_manager max_cached_processes 1024
+	device_config put activity_manager max_cached_processes 256
 	device_config put activity_manager max_empty_time_millis 43200000
 	device_config put activity_manager max_phantom_processes 2147483647
 	device_config put activity_manager proactive_kills_enabled false
@@ -612,51 +762,6 @@ cmd_sys() {
 	log_i "Tweaked system properties"
 }
 
-procs_tune() {
-	ps_ret="$(ps -Ao pid,args)"
-	change_task_nice() {
-		for temp_pid in $(echo "$ps_ret" | grep -i -E "$1" | awk '{print $1}'); do
-			for temp_tid in $(ls "/proc/$temp_pid/task/"); do
-				renice -n -20 -p "$temp_tid"
-			done
-		done
-	}
-	launcher_pkg="$(pm resolve-activity -a "android.intent.action.MAIN" -c "android.intent.category.HOME" | grep packageName | head -1 | cut -d= -f2)"
-	procs=(
-		"$launcher_pkg"
-		"android.process.acore"
-		"com.android.systemui"
-		"devfreq_boost"
-		"kblockd"
-		"kgsl_worker_thread"
-		"kverityd"
-		"load_tp_fw_wq"
-		"mali_event_thread"
-		"mali_jd_thread"
-		"mmc_clk_gate"
-		"netd"
-		"rcu_sched"
-		"rcu_tasks_kthre"
-		"servicemanag"
-		"speedup_resume_wq"
-		"surfaceflinger"
-		"system"
-		"system_server"
-		"tcm_freq_hop"
-		"thread_fence"
-		"touch_delta_wq"
-		"tp_async"
-		"ufs_clk_gating"
-		"wakeup_clk_wq"
-		"writeback"
-		"zygote"
-	)
-	for process in "${procs[@]}"; do
-		change_task_nice "$process"
-	done
-	log_i "Tweaked system processes priorities"
-}
-
 log_i "Initializing"
 init=$(date +%s)
 sync
@@ -669,12 +774,16 @@ config_tcp
 enable_usb_fast_chrg
 disable_debug
 stop_services
+therm_pol_set
+disable_mtk_thrtl
 io_tune
+config_f2fs
 boost_tune
 cpu_tune
 gpu_tune
 schedtune_tune
 sched_tune
+uclamp_tune
 vm_lmk_tune
 pewq
 disable_tb
@@ -686,7 +795,6 @@ kern_pwrsave
 blkio
 cmd_sys
 props
-procs_tune
 
 log_i "Tweaks applied. Enjoy!"
 exit=$(date +%s)
