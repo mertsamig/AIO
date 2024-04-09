@@ -78,9 +78,9 @@ stop_services() {
 		"logcatd"
 		"logd"
 		"mediametrics"
-		"mpdecision"
-		"perfd"
-		"perfservice"
+		#"mpdecision"
+		#"perfd"
+		#"perfservice"
 		"ramdump"
 		"stats"
 		"statscompanion"
@@ -92,14 +92,14 @@ stop_services() {
 		"traced_probes"
 		"vendor.cnss_diag"
 		"vendor.ipacm-diag"
-		"vendor.perfservice"
+		#"vendor.perfservice"
 		"vendor.tcpdump"
 		"wlan_logging"
 	)
 	for service in "${services[@]}"; do
     	kill_svc "$service"
 	done
-	rm -rf "/data/system/perfd/default_values" "/data/vendor/perfd/default_values" "/data/system/mcd/df" "/data/system/migt/migt"
+	#rm -rf "/data/system/perfd/default_values" "/data/vendor/perfd/default_values" "/data/system/mcd/df" "/data/system/migt/migt"
 	log_i "Disabled few debug services and userspace daemons"
 }
 
@@ -225,69 +225,6 @@ gpu_tune() {
 	write "${gpug}mali_touch_boost_level" "0"
 	write "${gpu}boost" "0"
 	write "${gpu}cl_boost_disable" "0"
-	write "${gpu}devfreq/gpufreq/mali_ondemand/no_vsync_downdifferential" "40"
-	write "${gpu}devfreq/gpufreq/mali_ondemand/no_vsync_upthreshold" "65"
-	write "${gpu}devfreq/gpufreq/mali_ondemand/vsync" "1"
-	write "${gpu}devfreq/gpufreq/mali_ondemand/vsync_downdifferential" "45"
-	write "${gpu}devfreq/gpufreq/mali_ondemand/vsync_upthreshold" "70"
-	write "${gpu}dvfs" "1"
-	write "${gpu}highspeed_delay" "0"
-	write "${gpu}highspeed_load" "86"
-	write "${gpu}power_policy" "always_on"
-	write "${gpu}tmu" "1"
-	[[ -d "/sys/module/ged/" ]] && {
-		write "/sys/module/ged/parameters/boost_amp" "0"
-		write "/sys/module/ged/parameters/boost_extra" "0"
-		write "/sys/module/ged/parameters/boost_gpu_enable" "0"
-		write "/sys/module/ged/parameters/enable_cpu_boost" "0"
-		write "/sys/module/ged/parameters/enable_game_self_frc_detect" "0"
-		write "/sys/module/ged/parameters/enable_gpu_boost" "0"
-		write "/sys/module/ged/parameters/ged_force_mdp_enable" "0"
-		write "/sys/module/ged/parameters/ged_log_perf_trace_enable" "0"
-		write "/sys/module/ged/parameters/ged_log_trace_enable" "0"
-		write "/sys/module/ged/parameters/ged_monitor_3D_fence_debug" "0"
-		write "/sys/module/ged/parameters/ged_monitor_3D_fence_disable" "1"
-		write "/sys/module/ged/parameters/ged_monitor_3D_fence_systrace" "0"
-		write "/sys/module/ged/parameters/ged_smart_boost" "1"
-		write "/sys/module/ged/parameters/gpu_cust_boost_freq" "0"
-		write "/sys/module/ged/parameters/gpu_debug_enable" "0"
-		write "/sys/module/ged/parameters/gpu_dvfs_enable" "1"
-		write "/sys/module/ged/parameters/gpu_idle" "100"
-		write "/sys/module/ged/parameters/gx_3D_benchmark_on" "0"
-		write "/sys/module/ged/parameters/gx_boost_on" "0"
-		write "/sys/module/ged/parameters/gx_dfps" "0"
-		write "/sys/module/ged/parameters/gx_force_cpu_boost" "0"
-		write "/sys/module/ged/parameters/gx_frc_mode" "0"
-		write "/sys/module/ged/parameters/gx_game_mode" "0"
-		write "/sys/module/ged/parameters/is_GED_KPI_enabled" "1"
-		write "/sys/module/ged/parameters/ged_boost_enable" "0"
-	}
-	[[ -d "/sys/kernel/gbe/" ]] && {
-		write "/sys/kernel/gbe/gbe_enable1" "0"
-		write "/sys/kernel/gbe/gbe_enable2" "0"
-		write "/sys/kernel/gbe/gbe2_max_boost_cnt" "5"
-	}
-	[[ -d "/proc/gpufreq/" ]] && {
-		write "/proc/gpufreq/gpufreq_input_boost" "0"
-		write "/proc/gpufreq/gpufreq_limited_low_batt_volt_ignore" "0"
-		write "/proc/gpufreq/gpufreq_limited_low_batt_volume_ignore" "0"
-		write "/proc/gpufreq/gpufreq_limited_oc_ignore" "0"
-		write "/proc/gpufreq/gpufreq_limited_thermal_ignore" "0"
-		write "/proc/gpufreq/gpufreq_opp_freq" "0"
-		write "/proc/gpufreq/gpufreq_opp_stress_test" "0"
-	}
-	[[ -d "/sys/kernel/ged/" ]] && {
-		write "/sys/kernel/ged/hal/dcs_mode" "0"
-		write "/sys/kernel/ged/hal/dvfs_margin_value" "20"
-		write "/sys/kernel/ged/hal/timer_base_dvfs_margin" "20"
-	}
-	[[ -d "/proc/mali/" ]] && {
-		write "/proc/mali/always_on" "0"
-		write "/proc/mali/dvfs_enable" "1"
-	}
-	[[ -d "/proc/gpufreqv2/" ]] && write "/proc/gpufreqv2/fix_target_opp_index" "-1"
-	[[ -d "/sys/module/sspm_v3/" ]] && write "/sys/module/sspm_v3/holders/ged/parameters/is_GED_KPI_enabled" "1"
-	[[ -d "/sys/module/pvrsrvkm/" ]] && write "/sys/module/pvrsrvkm/parameters/gpu_dvfs_enable" "1"
 	[[ -d "/sys/module/simple_gpu_algorithm/parameters/" ]] && {
 		write "/sys/module/simple_gpu_algorithm/parameters/simple_gpu_activate" "0"
 		log_i "Disabled SGPU algorithm"
@@ -323,7 +260,7 @@ schedtune_tune() {
 	write "${stune}schedtune.prefer_idle" "0"
 	write "${stune}schedtune.sched_boost" "0"
 	write "${stune}top-app/schedtune.boost" "1"
-	write "${stune}top-app/schedtune.prefer_idle" "1"
+	write "${stune}top-app/schedtune.prefer_idle" "0"
 	write "${stune}top-app/schedtune.sched_boost" "0"
 	log_i "Tweaked schedtune settings"
 }
@@ -447,9 +384,6 @@ vm_lmk_tune() {
 	write "${vm}page-cluster" "0"
 	write "${vm}reap_mem_on_sigkill" "1"
 	write "${vm}stat_interval" "600"
-	write "${vm}swap_ratio" "100"
-	write "${vm}swappiness" "100"
-	write "${vm}swappiness_nosys" "100"
 	write "${vm}vfs_cache_pressure" "100"
 	write "/sys/kernel/mm/lru_gen/min_ttl_ms" "1000"
 	write "/sys/kernel/mm/swap/vma_ra_enabled" "true"
@@ -628,28 +562,28 @@ props() {
 	resetprop -n dalvik.vm.minidebuginfo false
 	resetprop -n db.log.slow_query_threshold 0
 	resetprop -n debug.atrace.tags.enableflags 0
-	resetprop -n debug.hwui.renderer skiagl
+	resetprop -n debug.hwui.renderer skiavk
 	resetprop -n debug.hwui.skia_atrace_enabled false
 	resetprop -n debug.mdpcomp.logs 0
 	resetprop -n debug.renderengine.backend skiaglthreaded
 	resetprop -n debug.sf.auto_latch_unsignaled true
-	resetprop -n debug.sf.disable_client_composition_cache 0
+	#resetprop -n debug.sf.disable_client_composition_cache 0
 	resetprop -n debug.sf.dump 0
 	resetprop -n debug.sf.enable_layer_caching true
 	resetprop -n debug.sf.enable_small_dirty_detection true
 	resetprop -n debug.sf.latch_unsignaled false
-	#resetprop -n debug.sf.layer_caching_active_layer_timeout_ms 1000
-	resetprop -n debug.sf.predict_hwc_composition_strategy 1
+	resetprop -n debug.sf.layer_caching_active_layer_timeout_ms 1000
+	#resetprop -n debug.sf.predict_hwc_composition_strategy 1
 	resetprop -n libc.debug.malloc 0
 	resetprop -n media.stagefright.log-uri false
-	resetprop -n persist.bg.dexopt.enable false 
+	#resetprop -n persist.bg.dexopt.enable false 
 	resetprop -n persist.debug.sf.enable_layer_lifecycle_manager true
 	resetprop -n persist.debug.wfd.enable 0
 	resetprop -n persist.sys.strictmode.disable 1
 	resetprop -n persist.vendor.camera.realtimethread 1
 	resetprop -n persist.vendor.radio.adb_log_on 0
 	resetprop -n persist.vendor.sys.modem.logging.enable false
-	resetprop -n pm.dexopt.disable_bg_dexopt true 
+	#resetprop -n pm.dexopt.disable_bg_dexopt true 
 	resetprop -n renderthread.skia.reduceopstasksplitting true
 	resetprop -n ro.lmk.debug false
 	resetprop -n ro.lmk.log_stats false
@@ -676,14 +610,22 @@ props() {
 	resetprop -n iorapd.readahead.enable false
 	resetprop -n ro.iorapd.enable false
 	
+	#resetprop -n debug.sf.use_phase_offsets_as_durations 1
+	#resetprop -n debug.sf.late.sf.duration 10500000
+	#resetprop -n debug.sf.late.app.duration 20500000
+	#resetprop -n debug.sf.early.sf.duration 21000000
+	#resetprop -n debug.sf.early.app.duration 16500000
+	#resetprop -n debug.sf.earlyGl.sf.duration 13500000
+	#resetprop -n debug.sf.earlyGl.app.duration 21000000
+	
 	resetprop -n vendor.perf.framepacing.enable 1
 	resetprop -n vendor.power.pasr.enabled false
 	resetprop -n persist.mm.enable.prefetch true
-	resetprop -n debug.sdm.support_writeback 0
+	#resetprop -n debug.sdm.support_writeback 0
 	resetprop -n persist.vendor.radio.add_power_save 1
-	resetprop -n ro.vendor.perf.scroll_opt true
+	#resetprop -n ro.vendor.perf.scroll_opt true
 	resetprop -n ro.sf.force_hwc_brightness 1
-	#resetprop -n zygote.critical_window.minute 10
+	resetprop -n zygote.critical_window.minute 10
 	#resetprop -n ro.zram.mark_idle_delay_mins 60
 	#resetprop -n ro.zram.first_wb_delay_mins 1440
 	#resetprop -n ro.zram.periodic_wb_delay_hours 24
@@ -706,43 +648,36 @@ props() {
 	resetprop -n persist.log.tag.wificond S
 	resetprop -n persist.log.tag.TrafficStats S
 	resetprop -n persist.log.tag.ContrastColorUtil S
+	resetprop -n persist.log.tag.Telephony S
+	resetprop -n persist.log.tag.Telecom S
+	resetprop -n persist.log.tag.BufferQueueDump S
+	resetprop -n persist.log.tag.BufferQueueProducer S
+	resetprop -n persist.log.tag.SurfaceControl S
+	resetprop -n persist.log.tag.GraphicBuffer S
 	resetprop -n vendor.display.disable_rotator_downscale 1
-
-	resetprop -n debug.sf.frame_rate_multiple_threshold 30
+	
+	#resetprop -n debug.sf.frame_rate_multiple_threshold 30
 	resetprop -n sys.fflag.override.settings_seamless_transfer true
 	resetprop -n ro.apk_verity.mode 2
-	resetprop -n ro.min.fling_velocity 70
-	resetprop -n ro.max.fling_velocity 21000
-	resetprop -n ro.hwui.render_ahead 5
-	resetprop -n debug.sf.enable_egl_image_tracke 1
-	resetprop -n touch.size.scale 1
-	resetprop -n touch.size.bias 0
-	resetprop -n touch.size.isSummed 0
-	resetprop -n touch.pressure.scale 0.001
-	resetprop -n touch.distance.calibration none
-	resetprop -n touch.distance.scale 0
-	resetprop -n touch.coverage.calibration box
-	resetprop -n touch.gestureMode spots
-	resetprop -n MultitouchSettleInterval 1ms
-	resetprop -n MultitouchMinDistance 1px
-	resetprop -n TapInterval 1ms
-	resetprop -n TapSlop 1px
-	resetprop -n suspend.short_suspend_threshold_millis 2000
-	resetprop -n suspend.short_suspend_backoff_enabled true
-	resetprop -n suspend.max_sleep_time_millis 40000
-	resetprop -n ro.sf.skip_set_active_mode_when_off 1
-	resetprop -n ro.surface_flinger.vsync_event_phase_offset_ns 2000000
-	resetprop -n ro.surface_flinger.set_display_power_timer_ms 3000
-	resetprop -n ro.surface_flinger.set_idle_timer_ms 1000
-	resetprop -n ro.surface_flinger.set_touch_timer_ms 200
+	#resetprop -n suspend.short_suspend_threshold_millis 2000
+	#resetprop -n suspend.short_suspend_backoff_enabled true
+	#resetprop -n suspend.max_sleep_time_millis 40000
+	#resetprop -n ro.sf.skip_set_active_mode_when_off 1
+	#resetprop -n ro.surface_flinger.vsync_event_phase_offset_ns 2000000
+	#resetprop -n ro.surface_flinger.set_display_power_timer_ms 1000
+	#resetprop -n ro.surface_flinger.set_idle_timer_ms 80
+	#resetprop -n ro.surface_flinger.set_touch_timer_ms 200
 	resetprop -n vendor.display.enable_optimize_refresh 1
+	resetprop -n ro.zygote.preload.enable 1
+	resetprop -n ro.audio.monitorRotation true
+	resetprop -n ro.surface_flinger.enable_frame_rate_override true
 	log_i "Applied prop tweaks"
 }
 
 cmd_sys() {
 	cmd looper_stats disable
 	cmd power set-fixed-performance-mode-enabled true
-	device_config put activity_manager max_cached_processes 256
+	device_config put activity_manager max_cached_processes 4096
 	device_config put activity_manager max_empty_time_millis 43200000
 	device_config put activity_manager max_phantom_processes 2147483647
 	device_config put activity_manager proactive_kills_enabled false
@@ -785,10 +720,24 @@ cmd_sys() {
 	log_i "Tweaked system properties"
 }
 
+zram_off() {
+	swapoff /dev/block/zram0 > /dev/null 2>&1
+	write "/sys/block/zram0/disksize" "0"
+	write "/sys/block/zram0/reset" "1"
+	write "/proc/sys/vm/swappiness" "0"
+	log_i "Turned off swap and zram"
+}
+
+dexopt() {
+	cmd package bg-dexopt-job
+	log_i "Background optimization task executed"
+}
+
 log_i "Initializing"
 init=$(date +%s)
 sync
 
+zram_off
 disable_crc
 disable_crypto_tests
 config_fs
@@ -818,6 +767,7 @@ kern_pwrsave
 blkio
 cmd_sys
 props
+dexopt
 
 log_i "Tweaks applied. Enjoy!"
 exit=$(date +%s)
