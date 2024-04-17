@@ -321,7 +321,7 @@ sched_tune() {
 	write "${kernel}sched_autogroup_enabled" "1"
 	write "${kernel}sched_boost" "0"
 	write "${kernel}sched_boost_top_app" "1"
-	write "${kernel}sched_child_runs_first" "1"
+	write "${kernel}sched_child_runs_first" "0"
 	write "${kernel}sched_conservative_pl" "0"
 	write "${kernel}sched_cstate_aware" "1"
 	write "${kernel}sched_energy_aware" "1"
@@ -562,16 +562,16 @@ props() {
 	resetprop -n dalvik.vm.minidebuginfo false
 	resetprop -n db.log.slow_query_threshold 0
 	resetprop -n debug.atrace.tags.enableflags 0
-	resetprop -n debug.hwui.renderer skiavk
+	#resetprop -n debug.hwui.renderer skiavk
 	resetprop -n debug.hwui.skia_atrace_enabled false
 	resetprop -n debug.mdpcomp.logs 0
-	resetprop -n debug.renderengine.backend skiaglthreaded
-	resetprop -n debug.sf.auto_latch_unsignaled true
+	#resetprop -n debug.renderengine.backend skiaglthreaded
+	#resetprop -n debug.sf.auto_latch_unsignaled true
 	#resetprop -n debug.sf.disable_client_composition_cache 0
 	resetprop -n debug.sf.dump 0
 	resetprop -n debug.sf.enable_layer_caching true
 	resetprop -n debug.sf.enable_small_dirty_detection true
-	resetprop -n debug.sf.latch_unsignaled false
+	#resetprop -n debug.sf.latch_unsignaled false
 	resetprop -n debug.sf.layer_caching_active_layer_timeout_ms 1000
 	#resetprop -n debug.sf.predict_hwc_composition_strategy 1
 	resetprop -n libc.debug.malloc 0
@@ -605,7 +605,7 @@ props() {
 
 	#resetprop -n debug.cpurend.vsync false
 	#resetprop -n hwui.disable_vsync true
-	resetprop -n debug.gralloc.enable_fb_ubwc 1
+	#resetprop -n debug.gralloc.enable_fb_ubwc 1
 	resetprop -n iorapd.perfetto.enable false
 	resetprop -n iorapd.readahead.enable false
 	resetprop -n ro.iorapd.enable false
@@ -618,26 +618,26 @@ props() {
 	#resetprop -n debug.sf.earlyGl.sf.duration 13500000
 	#resetprop -n debug.sf.earlyGl.app.duration 21000000
 	
-	resetprop -n vendor.perf.framepacing.enable 1
-	resetprop -n vendor.power.pasr.enabled false
-	resetprop -n persist.mm.enable.prefetch true
+	#resetprop -n vendor.perf.framepacing.enable 1
+	#resetprop -n vendor.power.pasr.enabled false
+	#resetprop -n persist.mm.enable.prefetch true
 	#resetprop -n debug.sdm.support_writeback 0
-	resetprop -n persist.vendor.radio.add_power_save 1
+	#resetprop -n persist.vendor.radio.add_power_save 1
 	#resetprop -n ro.vendor.perf.scroll_opt true
 	resetprop -n ro.sf.force_hwc_brightness 1
-	resetprop -n zygote.critical_window.minute 10
+	#resetprop -n zygote.critical_window.minute 10
 	#resetprop -n ro.zram.mark_idle_delay_mins 60
 	#resetprop -n ro.zram.first_wb_delay_mins 1440
 	#resetprop -n ro.zram.periodic_wb_delay_hours 24
 	resetprop -n debug.sf.enable_hwc_vds 0
 	resetprop -n persist.sys.fuse.passthrough.enable true
-	resetprop -n debug.hwui.use_hint_manager true
-	resetprop -n debug.hwui.target_cpu_time_percent 30
-	resetprop -n vendor.display.use_smooth_motion 1
+	#resetprop -n debug.hwui.use_hint_manager true
+	#resetprop -n debug.hwui.target_cpu_time_percent 30
+	#resetprop -n vendor.display.use_smooth_motion 1
 	resetprop -n persist.vendor.btstack.enable.lpa true
 	resetprop -n ro.surface_flinger.use_content_detection_for_refresh_rate true
 	resetprop -n dalvik.vm.dex2oat64.enabled true
-	resetprop -n vidc.enc.dcvs.extra-buff-count 2
+	#resetprop -n vidc.enc.dcvs.extra-buff-count 2
 	resetprop -n persist.log.tag.AnalyticsService S
 	resetprop -n persist.log.tag.KernelCpuUidActiveTimeReader S
 	resetprop -n persist.log.tag.Tracer S
@@ -658,11 +658,11 @@ props() {
 	
 	#resetprop -n debug.sf.frame_rate_multiple_threshold 30
 	resetprop -n sys.fflag.override.settings_seamless_transfer true
-	resetprop -n ro.apk_verity.mode 2
+	#resetprop -n ro.apk_verity.mode 2
 	#resetprop -n suspend.short_suspend_threshold_millis 2000
 	#resetprop -n suspend.short_suspend_backoff_enabled true
 	#resetprop -n suspend.max_sleep_time_millis 40000
-	#resetprop -n ro.sf.skip_set_active_mode_when_off 1
+	resetprop -n ro.sf.skip_set_active_mode_when_off 1
 	#resetprop -n ro.surface_flinger.vsync_event_phase_offset_ns 2000000
 	#resetprop -n ro.surface_flinger.set_display_power_timer_ms 1000
 	#resetprop -n ro.surface_flinger.set_idle_timer_ms 80
@@ -671,6 +671,7 @@ props() {
 	resetprop -n ro.zygote.preload.enable 1
 	resetprop -n ro.audio.monitorRotation true
 	resetprop -n ro.surface_flinger.enable_frame_rate_override true
+	resetprop -n dalvik.vm.dexopt.secondary true
 	log_i "Applied prop tweaks"
 }
 
@@ -737,6 +738,8 @@ log_i "Initializing"
 init=$(date +%s)
 sync
 
+echo "" > "$kdbg"
+echo "" > "$klog"
 zram_off
 disable_crc
 disable_crypto_tests
