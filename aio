@@ -576,14 +576,12 @@ props() {
 	#resetprop -n debug.sf.predict_hwc_composition_strategy 1
 	resetprop -n libc.debug.malloc 0
 	resetprop -n media.stagefright.log-uri false
-	#resetprop -n persist.bg.dexopt.enable false 
 	resetprop -n persist.debug.sf.enable_layer_lifecycle_manager true
 	resetprop -n persist.debug.wfd.enable 0
 	resetprop -n persist.sys.strictmode.disable 1
 	resetprop -n persist.vendor.camera.realtimethread 1
 	resetprop -n persist.vendor.radio.adb_log_on 0
 	resetprop -n persist.vendor.sys.modem.logging.enable false
-	#resetprop -n pm.dexopt.disable_bg_dexopt true 
 	resetprop -n renderthread.skia.reduceopstasksplitting true
 	resetprop -n ro.lmk.debug false
 	resetprop -n ro.lmk.log_stats false
@@ -636,7 +634,6 @@ props() {
 	#resetprop -n vendor.display.use_smooth_motion 1
 	resetprop -n persist.vendor.btstack.enable.lpa true
 	resetprop -n ro.surface_flinger.use_content_detection_for_refresh_rate true
-	resetprop -n dalvik.vm.dex2oat64.enabled true
 	#resetprop -n vidc.enc.dcvs.extra-buff-count 2
 	resetprop -n persist.log.tag.AnalyticsService S
 	resetprop -n persist.log.tag.KernelCpuUidActiveTimeReader S
@@ -671,7 +668,11 @@ props() {
 	resetprop -n ro.zygote.preload.enable 1
 	resetprop -n ro.audio.monitorRotation true
 	resetprop -n ro.surface_flinger.enable_frame_rate_override true
+
+	resetprop -n dalvik.vm.dex2oat64.enabled true
 	resetprop -n dalvik.vm.dexopt.secondary true
+	resetprop -n pm.dexopt.bg-dexopt speed
+	resetprop -n pm.dexopt.shared speed
 	log_i "Applied prop tweaks"
 }
 
