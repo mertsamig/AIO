@@ -286,9 +286,12 @@ vm_lmk_tune() {
 	write "${vm}page-cluster" "0"
 	write "${vm}reap_mem_on_sigkill" "1"
 	write "${vm}stat_interval" "600"
+	write "/sys/kernel/mm/lru_gen/enabled" "Y"
 	write "/sys/kernel/mm/lru_gen/min_ttl_ms" "1000"
 	write "/sys/kernel/mm/swap/vma_ra_enabled" "true"
 	write "/sys/module/process_reclaim/parameters/enable_process_reclaim" "1"
+	write "${vm}watermark_scale_factor" "100"
+	write "${vm}watermark_boost_factor" "0"
 	log_i "Tweaked various VM and LMK parameters for a improved user-experience"
 }
 
@@ -486,8 +489,31 @@ props() {
 
 	resetprop -n dalvik.vm.dex2oat64.enabled true
 	resetprop -n dalvik.vm.dexopt.secondary true
-	resetprop -n pm.dexopt.bg-dexopt speed
-	resetprop -n pm.dexopt.shared speed
+	resetprop -n pm.dexopt.bg-dexopt everything
+	resetprop -n pm.dexopt.cmdline everything
+	resetprop -n pm.dexopt.first-use everything
+	resetprop -n pm.dexopt.install everything
+	resetprop -n pm.dexopt.install-bulk everything
+	resetprop -n pm.dexopt.install-bulk-downgraded everything
+	resetprop -n pm.dexopt.install-bulk-secondary everything
+	resetprop -n pm.dexopt.install-bulk-secondary-downgraded everything
+	resetprop -n pm.dexopt.shared everything
+	resetprop -n dalvik.vm.systemservercompilerfilter everything
+	resetprop -n dalvik.vm.systemuicompilerfilter everything
+
+	resetprop -n debug.sf.hw 1
+	resetprop -n debug.egl.hw 1
+	resetprop -n persist.sys.force_sw_gles 0
+	resetprop -n debug.sf.enable_gl_backpressure 1
+	resetprop -n debug.sf.disable_client_composition_cache 0
+	resetprop -n debug.sf.predict_hwc_composition_strategy 1
+	resetprop -n vendor.display.disable_3d_adaptive_tm 0
+	resetprop -n vendor.display.disable_excl_rect_partial_fb 0
+	resetprop -n vendor.display.disable_spec_fence 0
+	resetprop -n vendor.display.enable_async_powermode 1
+	resetprop -n vendor.display.enable_inline_writeback 1
+	resetprop -n vendor.display.enable_perf_hint_large_comp_cycle 1
+	resetprop -n vendor.display.enable_spec_fence 1
 	log_i "Applied prop tweaks"
 }
 
@@ -495,10 +521,10 @@ cmd_sys() {
 	device_config reset untrusted_defaults
 	device_config reset untrusted_clear
 	device_config reset trusted_defaults
-	device_config set_sync_disabled_for_tests persistent
+	device_config set_sync_disabled_for_tests until_reboot
 	cmd looper_stats disable
 	cmd power set-fixed-performance-mode-enabled true
-	device_config put activity_manager max_cached_processes 4096
+	device_config put activity_manager max_cached_processes 65535
 	device_config put activity_manager max_empty_time_millis 43200000
 	device_config put activity_manager max_phantom_processes 2147483647
 	device_config put activity_manager proactive_kills_enabled false
@@ -533,6 +559,9 @@ cmd_sys() {
 	settings put secure screensaver_activate_on_sleep 0 
 	settings put secure screensaver_enabled 0
 	settings put secure send_action_app_error 0
+	device_config put netd_native happy_eyeballs_enable true
+	device_config put netd_native parallel_lookup true
+	device_config put netd_native sort_nameservers true
 	log_i "Tweaked system properties"
 }
 
