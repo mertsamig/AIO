@@ -1,0 +1,53 @@
+#!/system/bin/sh
+
+clear
+log_file="/storage/emulated/0/fixgoogleanalytics.log"
+echo "" > "$log_file"
+
+google_analytics=(
+    "com.google.android.gms.analytics.AnalyticsJobService"
+    "com.google.android.gms.analytics.CampaignTrackingService"
+    "com.google.android.gms.measurement.AppMeasurementService"
+    "com.google.android.gms.measurement.AppMeasurementJobService"
+    "com.google.android.gms.analytics.AnalyticsReceiver"
+    "com.google.android.gms.analytics.CampaignTrackingReceiver"
+    "com.google.android.gms.measurement.AppMeasurementInstallReferrerReceiver"
+    "com.google.android.gms.measurement.AppMeasurementReceiver"
+    "com.google.android.gms.measurement.AppMeasurementContentProvider"
+    "com.crashlytics.android.CrashlyticsInitProvider"
+    "com.google.android.gms.ads.AdActivity"
+    "com.google.firebase.iid.FirebaseInstanceIdService"
+)
+
+echo "==========================================================" | tee -a "$log_file"
+echo "Setting targeted Google Analytics on applications to $1d state" | tee -a "$log_file"
+echo ""
+echo "Please wait as this will take some time to complete depending on the number of applications installed" | tee -a "$log_file"
+echo ""
+
+package_count=$(pm list packages | wc -l)
+echo "$package_count packages installed" | tee -a "$log_file"
+echo ""
+
+processedcount=0
+fix_count=0
+fail_count=0
+
+for package in $(pm list packages | sed 's/package://g' | sort); do
+    for component in "${google_analytics[@]}"; do
+        output=$(pm "$1" "$package/$component" 2>&1) && {
+            echo "$output" >> "$log_file"
+            ((fix_count++))
+        } || {
+            echo "Component {$package/$component} NOT FOUND" >> "$log_file"
+            ((fail_count++))
+        }
+    done
+    ((processedcount++))
+    echo -ne "$processedcount packages processed\r"
+done
+
+echo '==========================================================' | tee -a "$log_file"
+echo "Analytics and ad receivers $1d: $fix_count" | tee -a "$log_file"
+echo "Analytics and ad receivers not $1d or found: $fail_count" | tee -a "$log_file"
+echo '==========================================================' | tee -a "$log_file"
