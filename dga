@@ -28,7 +28,7 @@ if [[ "$desired_state" != "enable" && "$desired_state" != "disable" ]]; then
 fi
 
 echo "==========================================================" | tee -a "$log_file"
-echo "Setting targeted Google Analytics on applications to $desired_stated state" | tee -a "$log_file"
+echo "Setting targeted Google Analytics on applications to $desired_state state" | tee -a "$log_file"
 echo ""
 echo "Please wait as this will take some time to complete depending on the number of applications installed" | tee -a "$log_file"
 echo ""
@@ -57,7 +57,6 @@ for package in $(pm list packages | sed 's/package://g' | sort); do
                 ((fix_count++))
             else
                 echo "Error changing state for $package/$component:" >> "$log_file"
-                echo "$output" >> "$log_file"
                 ((fail_count++))
             fi
         fi
@@ -67,6 +66,6 @@ for package in $(pm list packages | sed 's/package://g' | sort); do
 done
 
 echo '==========================================================' | tee -a "$log_file"
-echo "Analytics and ad receivers $desired_stated: $fix_count" | tee -a "$log_file"
+echo "Analytics and ad receivers $desired_state: $fix_count" | tee -a "$log_file"
 echo "Failed to change state: $fail_count" | tee -a "$log_file"
 echo '==========================================================' | tee -a "$log_file"
