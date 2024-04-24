@@ -39,27 +39,17 @@ echo ""
 
 processedcount=0
 fix_count=0
-fail_count=0
+component_count=0
 
 for package in $(pm list packages | sed 's/package://g' | sort); do
     for component in "${google_analytics[@]}"; do
-        component_info=$(pm list packages -f "$package" | grep "$component")
-        if [[ -n "$component_info" ]]; then
-            current_state=$(echo "$component_info" | awk '{print $NF}')
-        else
-            current_state="not found"
+        output=$(pm "$desired_state" "$package/$component" 2>&1)
+        if echo "$output" | grep -q "enabled" || echo "$output" | grep -q "disabled"; then
+            new_state=$(echo "$output" | awk '{print $NF}')
+            echo "Component: $package/$component - State set to $new_state" >> "$log_file"
+            ((fix_count++))
         fi
-        if [[ "$current_state" != "$desired_state" ]]; then
-            output=$(pm "$desired_state" "$package/$component" 2>&1)
-            if echo "$output" | grep -q "enabled" || echo "$output" | grep -q "disabled"; then
-                new_state=$(echo "$output" | awk '{print $NF}')
-                echo "Component: $package/$component - State changed from $current_state to $new_state" >> "$log_file"
-                ((fix_count++))
-            else
-                echo "Error changing state for $package/$component:" >> "$log_file"
-                ((fail_count++))
-            fi
-        fi
+        ((component_count++))
     done
     ((processedcount++))
     echo -ne "$processedcount packages processed\r"
@@ -67,5 +57,5 @@ done
 
 echo '==========================================================' | tee -a "$log_file"
 echo "Analytics and ad receivers $desired_state: $fix_count" | tee -a "$log_file"
-echo "Failed to change state: $fail_count" | tee -a "$log_file"
+echo "Total components processed: $component_count" | tee -a "$log_file"
 echo '==========================================================' | tee -a "$log_file"
