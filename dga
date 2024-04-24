@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 clear
-log_file="/storage/emulated/0/fixgoogleanalytics.log"
+log_file="/storage/emulated/0/aio/fixgoogleanalytics.log"
 echo "" > "$log_file"
 
 google_analytics=(
@@ -19,8 +19,16 @@ google_analytics=(
     "com.google.firebase.iid.FirebaseInstanceIdService"
 )
 
+echo "Enter desired state (enable/disable):"
+read desired_state
+
+if [[ "$desired_state" != "enable" && "$desired_state" != "disable" ]]; then
+    echo "Invalid input. Please enter 'enable' or 'disable'."
+    exit 1
+fi
+
 echo "==========================================================" | tee -a "$log_file"
-echo "Setting targeted Google Analytics on applications to $1d state" | tee -a "$log_file"
+echo "Setting targeted Google Analytics on applications to $desired_state state" | tee -a "$log_file"
 echo ""
 echo "Please wait as this will take some time to complete depending on the number of applications installed" | tee -a "$log_file"
 echo ""
@@ -31,23 +39,23 @@ echo ""
 
 processedcount=0
 fix_count=0
-fail_count=0
 
 for package in $(pm list packages | sed 's/package://g' | sort); do
     for component in "${google_analytics[@]}"; do
-        output=$(pm "$1" "$package/$component" 2>&1) && {
-            echo "$output" >> "$log_file"
-            ((fix_count++))
-        } || {
-            echo "Component {$package/$component} NOT FOUND" >> "$log_file"
-            ((fail_count++))
-        }
+        current_state=$(pm list packages -f "$package" | grep "$component" | awk '{print $NF}')
+        if [[ "$current_state" != "$desired_state" ]]; then
+            output=$(pm "$desired_state" "$package/$component" 2>&1)
+            if echo "$output" | grep -q "enabled" || echo "$output" | grep -q "disabled"; then
+                new_state=$(echo "$output" | awk '{print $NF}')
+                echo "Component: $package/$component - State changed from $current_state to $new_state" >> "$log_file"
+                ((fix_count++))
+            fi
+        fi
     done
     ((processedcount++))
     echo -ne "$processedcount packages processed\r"
 done
 
 echo '==========================================================' | tee -a "$log_file"
-echo "Analytics and ad receivers $1d: $fix_count" | tee -a "$log_file"
-echo "Analytics and ad receivers not $1d or found: $fail_count" | tee -a "$log_file"
+echo "Analytics and ad receivers $desired_state: $fix_count" | tee -a "$log_file"
 echo '==========================================================' | tee -a "$log_file"
