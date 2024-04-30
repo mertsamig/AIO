@@ -1,0 +1,7 @@
+sync
+
+cd /data/data
+
+find . -type f -name 'gms' -delete
+
+echo "Reboot to apply changes."
