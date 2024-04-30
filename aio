@@ -289,9 +289,7 @@ vm_lmk_tune() {
 	write "/sys/kernel/mm/lru_gen/enabled" "Y"
 	write "/sys/kernel/mm/lru_gen/min_ttl_ms" "1000"
 	write "/sys/kernel/mm/swap/vma_ra_enabled" "true"
-	write "/sys/module/process_reclaim/parameters/enable_process_reclaim" "1"
-	write "${vm}watermark_scale_factor" "100"
-	write "${vm}watermark_boost_factor" "0"
+	write "/sys/module/process_reclaim/parameters/enable_process_reclaim" "0"
 	log_i "Tweaked various VM and LMK parameters for a improved user-experience"
 }
 
@@ -313,20 +311,18 @@ config_tcp() {
 	done
 	write "${tcp_v4}ip_no_pmtu_disc" "0"
 	write "${tcp_v4}tcp_ecn" "1"
-	write "${tcp_v4}tcp_fack" "1"
 	write "${tcp_v4}tcp_fastopen" "3"
 	write "${tcp_v4}tcp_mtu_probing" "1"
-	write "${tcp_v4}tcp_no_metrics_save" "1"
+	#write "${tcp_v4}tcp_no_metrics_save" "1"
 	write "${tcp_v4}tcp_sack" "1"
-	write "${tcp_v4}tcp_slow_start_after_idle" "0"
-	write "${tcp_v4}tcp_syncookies" "0"
-	write "${tcp_v4}tcp_timestamps" "0"
+	#write "${tcp_v4}tcp_slow_start_after_idle" "0"
+	#write "${tcp_v4}tcp_syncookies" "0"
+	#write "${tcp_v4}tcp_timestamps" "0"
 	write "${tcp_v4}tcp_tw_recycle" "1"
 	write "${tcp_v4}tcp_tw_reuse" "1"
 	write "${tcp_v4}tcp_window_scaling" "1"
-	write "/proc/sys/net/core/netdev_max_backlog" "16384"
-	write "/proc/sys/net/core/netdev_tstamp_prequeue" "0"
-	ip route | while read p; do ip route change $p initcwnd 20 initrwnd 20; done
+	#write "/proc/sys/net/core/netdev_max_backlog" "16384"
+	#write "/proc/sys/net/core/netdev_tstamp_prequeue" "0"
 	log_i "Applied TCP tweaks"
 }
 
@@ -417,11 +413,8 @@ disable_tb() {
 
 props() {
 	resetprop -n arm64.memtag.process.system_server off
-	resetprop -n dalvik.vm.check-dex-sum false
-	resetprop -n dalvik.vm.checkjni false
 	resetprop -n dalvik.vm.dex2oat-minidebuginfo false
 	resetprop -n dalvik.vm.minidebuginfo false
-	resetprop -n db.log.slow_query_threshold 0
 	resetprop -n debug.atrace.tags.enableflags 0
 	resetprop -n debug.hwui.skia_atrace_enabled false
 	resetprop -n debug.mdpcomp.logs 0
@@ -440,53 +433,22 @@ props() {
 	resetprop -n ro.lmk.debug false
 	resetprop -n ro.lmk.log_stats false
 	resetprop -n ro.surface_flinger.enable_layer_caching true
-	resetprop -n sys.miui.ndcd off
-	resetprop -n sys.use_fifo_ui 1
 	resetprop -n sys.wifitracing.started 0
-	
-	resetprop -n disableBlurs false
-	resetprop -n enable_blurs_on_windows 1
-	resetprop -n persist.sys.background_blur_supported true
-	resetprop -n persist.sys.sf.disable_blurs false
-	resetprop -n ro.launcher.blur.appLaunch 1
-	resetprop -n ro.miui.has_real_blur 1
-	resetprop -n ro.sf.blurs_are_caro 0
-	resetprop -n ro.sf.blurs_are_expensive 1
-	resetprop -n ro.surface_flinger.supports_background_blur 1
 
 	resetprop -n iorapd.perfetto.enable false
 	resetprop -n iorapd.readahead.enable false
 	resetprop -n ro.iorapd.enable false
 	
 	resetprop -n ro.sf.force_hwc_brightness 1
-	resetprop -n debug.sf.enable_hwc_vds 0
 	resetprop -n persist.sys.fuse.passthrough.enable true
 	resetprop -n persist.vendor.btstack.enable.lpa true
 	resetprop -n ro.surface_flinger.use_content_detection_for_refresh_rate true
-	resetprop -n persist.log.tag.AnalyticsService S
-	resetprop -n persist.log.tag.KernelCpuUidActiveTimeReader S
-	resetprop -n persist.log.tag.Tracer S
-	resetprop -n persist.log.tag.NearbySharing S
-	resetprop -n persist.log.tag.IntervalStats S
-	resetprop -n persist.log.tag.CompatibilityChangeReporter S
-	resetprop -n persist.log.tag.SQLiteLog S
-	resetprop -n persist.log.tag.wificond S
-	resetprop -n persist.log.tag.TrafficStats S
-	resetprop -n persist.log.tag.ContrastColorUtil S
-	resetprop -n persist.log.tag.Telephony S
-	resetprop -n persist.log.tag.Telecom S
-	resetprop -n persist.log.tag.BufferQueueDump S
-	resetprop -n persist.log.tag.BufferQueueProducer S
-	resetprop -n persist.log.tag.SurfaceControl S
-	resetprop -n persist.log.tag.GraphicBuffer S
 	resetprop -n vendor.display.disable_rotator_downscale 1
 	
 	resetprop -n sys.fflag.override.settings_seamless_transfer true
-	resetprop -n ro.sf.skip_set_active_mode_when_off 1
 	resetprop -n vendor.display.enable_optimize_refresh 1
-	resetprop -n ro.zygote.preload.enable 1
+	resetprop -n ro.zygote.disable_gl_preload false
 	resetprop -n ro.audio.monitorRotation true
-	resetprop -n ro.surface_flinger.enable_frame_rate_override true
 
 	resetprop -n dalvik.vm.dex2oat64.enabled true
 	resetprop -n dalvik.vm.dexopt.secondary true
