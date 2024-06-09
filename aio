@@ -473,31 +473,33 @@ sync
 
 echo "" > "$kdbg"
 echo "" > "$klog"
-zram_off
-disable_crc
-disable_crypto_tests
-config_fs
-config_dyn_fsync
-config_tcp
-enable_usb_fast_chrg
-disable_debug
-stop_services
-io_tune
-boost_tune
-cpu_tune
-gpu_tune
-schedtune_tune
-sched_tune
-vm_lmk_tune
-pewq
-disable_tb
-fp_boost
-pm2_idle_mode
-kern_pwrsave
-cmd_sys
-dexopt
+zram_off &
+dexopt &
+disable_crc &
+disable_crypto_tests &
+config_fs &
+config_dyn_fsync &
+config_tcp &
+enable_usb_fast_chrg &
+disable_debug &
+stop_services &
+io_tune &
+boost_tune &
+cpu_tune &
+gpu_tune &
+schedtune_tune &
+sched_tune &
+vm_lmk_tune &
+pewq &
+disable_tb &
+fp_boost &
+pm2_idle_mode &
+kern_pwrsave &
+cmd_sys &
 
+wait
 log_i "Tweaks applied. Enjoy!"
 exit=$(date +%s)
 exec_time=$((exit - init))
 log_i "Spent time: $exec_time seconds."
+exit
