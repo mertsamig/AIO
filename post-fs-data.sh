@@ -47,8 +47,6 @@ resetprop -n dev.pm.dyn_samplingrate 1
 resetprop -n debug.sf.latch_unsignaled 0
 resetprop -n debug.sf.auto_latch_unsignaled 1
 
-resetprop -n debug.sf.enable_layer_caching true
 resetprop -n debug.sf.enable_small_dirty_detection true
 resetprop -n persist.debug.sf.enable_layer_lifecycle_manager true
-resetprop -n ro.surface_flinger.enable_layer_caching true
 resetprop -n sys.miui.ndcd off
