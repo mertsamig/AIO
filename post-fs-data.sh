@@ -40,7 +40,6 @@ resetprop -n pm.dexopt.shared everything
 resetprop -n vendor.display.enable_async_powermode 1
 resetprop -n vendor.display.enable_inline_writeback 1
 resetprop -n vendor.display.enable_perf_hint_large_comp_cycle 1
-resetprop -n vendor.display.enable_spec_fence 1
 
 resetprop -n sdm.debug.disable_skip_validate 1
 resetprop -n dev.pm.dyn_samplingrate 1
@@ -48,3 +47,8 @@ resetprop -n dev.pm.dyn_samplingrate 1
 resetprop -n debug.sf.latch_unsignaled 0
 resetprop -n debug.sf.auto_latch_unsignaled 1
 
+resetprop -n debug.sf.enable_layer_caching true
+resetprop -n debug.sf.enable_small_dirty_detection true
+resetprop -n persist.debug.sf.enable_layer_lifecycle_manager true
+resetprop -n ro.surface_flinger.enable_layer_caching true
+resetprop -n sys.miui.ndcd off
