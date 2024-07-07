@@ -23,7 +23,7 @@ echo "Enter desired state (enable/disable):"
 read desired_state
 
 if [[ "$desired_state" != "enable" && "$desired_state" != "disable" ]]; then
-    echo "Invalid input. Please enter 'enable' or 'disable'."
+    echo "Invalid input. Please enter 'enable' or 'disable'." >&2
     exit 1
 fi
 
@@ -37,23 +37,24 @@ package_count=$(pm list packages | wc -l)
 echo "$package_count packages installed" | tee -a "$log_file"
 echo ""
 
-processedcount=0
+processed_count=0
 fix_count=0
 component_count=0
 
 for package in $(pm list packages | sed 's/package://g' | sort); do
     for component in "${google_analytics[@]}"; do
+        ((component_count++))
         output=$(pm "$desired_state" "$package/$component" 2>&1)
         if echo "$output" | grep -q "enabled" || echo "$output" | grep -q "disabled"; then
             new_state=$(echo "$output" | awk '{print $NF}')
             echo "Component: $package/$component - State set to $new_state" >> "$log_file"
             ((fix_count++))
         fi
-        ((component_count++))
     done
-    ((processedcount++))
-    echo -ne "$processedcount packages processed\r"
+    ((processed_count++))
+    echo -ne "\r$processed_count packages processed"
 done
+echo ""
 
 echo '==========================================================' | tee -a "$log_file"
 echo "Analytics and ad receivers ${desired_state}d: $fix_count" | tee -a "$log_file"
