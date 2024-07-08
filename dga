@@ -1,62 +1,74 @@
 #!/system/bin/sh
 
-clear
-log_file="/storage/emulated/0/aio/fixgoogleanalytics.log"
-echo "" > "$log_file"
 
-google_analytics=(
-    "com.google.android.gms.analytics.AnalyticsJobService"
-    "com.google.android.gms.analytics.CampaignTrackingService"
-    "com.google.android.gms.measurement.AppMeasurementService"
-    "com.google.android.gms.measurement.AppMeasurementJobService"
-    "com.google.android.gms.analytics.AnalyticsReceiver"
-    "com.google.android.gms.analytics.CampaignTrackingReceiver"
-    "com.google.android.gms.measurement.AppMeasurementInstallReferrerReceiver"
-    "com.google.android.gms.measurement.AppMeasurementReceiver"
-    "com.google.android.gms.measurement.AppMeasurementContentProvider"
-    "com.crashlytics.android.CrashlyticsInitProvider"
-    "com.google.android.gms.ads.AdActivity"
-    "com.google.firebase.iid.FirebaseInstanceIdService"
+
+LOG_FILE="/storage/emulated/0/aio/dga.log"
+DBG_LOG_FILE="/storage/emulated/0/aio/dga_dbg.log"
+
+rm -f "$LOG_FILE" "$DBG_LOG_FILE"
+
+: > "$LOG_FILE"
+: > "$DBG_LOG_FILE"
+
+LOG() {
+    echo "$1" >> "$LOG_FILE"
+}
+
+LOG_D() {
+    echo "[$(date +%T)]: $1" >> "$LOG_FILE"
+}
+
+sync
+
+LOG_D "- Searching and disabling telemetry services of your apps..."
+
+PACKAGES=$(pm list packages | cut -f 2 -d ":")
+EXCEPTION_SERVICES=(
+"com.whatsapp.crash.upload.ExceptionsUploadService"
 )
 
-echo "Enter desired state (enable/disable):"
-read desired_state
+keywords=(
+"FirebaseInstanceIdService"
+"adactivity"
+"analytics"
+"applog"
+"crash"
+"diagnostic"
+"logcat"
+"logger"
+"logging"
+"logservice"
+"measurement"
+"metrics"
+"report"
+"stats"
+"trace"
+"tracing"
+"track"
+)
 
-if [[ "$desired_state" != "enable" && "$desired_state" != "disable" ]]; then
-    echo "Invalid input. Please enter 'enable' or 'disable'." >&2
-    exit 1
-fi
-
-echo "==========================================================" | tee -a "$log_file"
-echo "This process will $desired_state targeted analytics and ad receivers on applications" | tee -a "$log_file"
-echo ""
-echo "Please wait as this will take some time to complete depending on the number of applications installed" | tee -a "$log_file"
-echo ""
-
-package_count=$(pm list packages | wc -l)
-echo "$package_count packages installed" | tee -a "$log_file"
-echo ""
-
-processed_count=0
-fix_count=0
-component_count=0
-
-for package in $(pm list packages | sed 's/package://g' | sort); do
-    for component in "${google_analytics[@]}"; do
-        ((component_count++))
-        output=$(pm "$desired_state" "$package/$component" 2>&1)
-        if echo "$output" | grep -q "enabled" || echo "$output" | grep -q "disabled"; then
-            new_state=$(echo "$output" | awk '{print $NF}')
-            echo "Component: $package/$component - State set to $new_state" >> "$log_file"
-            ((fix_count++))
-        fi
+for keyword in "${keywords[@]}"; do
+    for package in $PACKAGES; do
+        components=$(dumpsys package "$package" | grep -Ei "Service|Receiver" | grep -i "$keyword")
+        for component in $components; do
+            component_name=$(echo "$component" | cut -d ' ' -f 2)
+            for exception_service in "${EXCEPTION_SERVICES[@]}"; do
+                if [ "$component_name" != "$exception_service" ]; then
+                    if pm disable "$package/$component_name" > /dev/null 2>&1; then
+                        echo "DISABLED: $package/$component_name" >> "$DBG_LOG_FILE"
+                        ((COUNTER++))
+                    fi
+                fi
+            done
+        done
     done
-    ((processed_count++))
-    echo -ne "\r$processed_count packages processed"
 done
-echo ""
 
-echo '==========================================================' | tee -a "$log_file"
-echo "Analytics and ad receivers ${desired_state}d: $fix_count" | tee -a "$log_file"
-echo "Total components processed: $component_count" | tee -a "$log_file"
-echo '==========================================================' | tee -a "$log_file"
+LOG " "
+LOG_D "- Finished."
+
+LOG " "
+LOG "～～～～～～～～～～～～～～～～～～～～～～～～～"
+LOG_D "DisableGoogleAnalytics is successfully applied."
+LOG_D "Total disabled services: $COUNTER."
+LOG "～～～～～～～～～～～～～～～～～～～～～～～～～"
