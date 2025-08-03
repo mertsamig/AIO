@@ -1,3 +1,4 @@
+#!/system/bin/sh
 if [ -f $INFO ]; then
   while read LINE; do
     if [ "$(echo -n $LINE | tail -c 1)" == "~" ]; then

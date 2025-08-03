@@ -1,25 +1,20 @@
-#!/bin/bash
+#!/system/bin/sh
 
-echo "Resetting Android settings..."
-for namespace in global system secure; do
-    echo "Processing namespace: $namespace"
-    settings list "$namespace" | while read line; do
-        key=$(echo "$line" | cut -d= -f1)
-        echo "Resetting $namespace setting: $key"
-        settings delete "$namespace" "$key"
-    done
-done
+# This script will completely remove the AIO module from your system.
+# This is the safest way to revert all changes made by the module,
+# including kernel-level tweaks applied via /sys and /proc.
 
-echo "Resetting device_config entries..."
+echo "Uninstalling the AIO module..."
 
-namespaces=$(device_config list | cut -d'/' -f1 | sort -u)
-for namespace in $namespaces; do
-    echo "Processing device_config namespace: $namespace"
-    device_config list "$namespace" | while read line; do
-        key=$(echo "$line" | cut -d= -f1)
-        echo "Resetting $namespace configuration: $key"
-        device_config delete "$namespace" "$key"
-    done
-done
+# Check if Magisk is in the path
+if ! command -v magisk >/dev/null 2>&1; then
+    echo "Error: 'magisk' command not found. This script must be run in a root shell where Magisk is accessible."
+    exit 1
+fi
 
-echo "Reset process completed."
+magisk --remove-modules aio
+
+echo " "
+echo "AIO module has been scheduled for uninstallation."
+echo "Please reboot your device for the changes to take effect."
+echo "After rebooting, the module will be completely removed."

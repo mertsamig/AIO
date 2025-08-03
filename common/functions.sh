@@ -1,11 +1,10 @@
 #!/system/bin/sh
 
-
+# Helper functions for AIO installation
 
 cleanup() {
 	rm -rf "$MODPATH/common"
 	rm -rf "$MODPATH/LICENSE"
-	rm -rf "$MODPATH/README.md"
 }
 
 abort() {
@@ -15,112 +14,111 @@ abort() {
 	exit 1
 }
 
-cp_ch() {
-	opt=$(getopt -o nr -- "$@") BAK=true UBAK=true FOL=false
-	eval set -- "$opt"
-	while true; do
-		case "$1" in
-			-n)
-				UBAK=false
-				shift
-				;;
-			-r)
-				FOL=true
-				shift
-				;;
-			--)
-				shift
-				break
-				;;
-			*) abort "Invalid cp_ch argument $1! Aborting!" ;;
-		esac
-	done
-	SRC="$1" DEST="$2" OFILES="$1"
-	"$FOL" && OFILES=$(find "$SRC" -type f)
-	[[ -z "$3" ]] && PERM=0777 || PERM="$3"
-	case "$DEST" in
-		"$TMPDIR"/* | "$MODULEROOT"/* | "$NVBASE/modules/$MODID"/*) BAK=false ;;
-	esac
-	for OFILE in "$OFILES"; do
-		"$FOL" && {
-			[[ "$(basename "$SRC")" == "$(basename "$DEST")" ]] && FILE=$(echo "$OFILE" | sed "s|$SRC|$DEST|") || FILE=$(echo "$OFILE" | sed "s|$SRC|$DEST/$(basename "$SRC")|")
-		} || [[ -d "$DEST" ]] && FILE="$DEST/$(basename "$SRC")" || FILE="$DEST"
-		"$BAK" && "$UBAK" && {
-			[[ ! "$(grep "$FILE"$ "$INFO")" ]] && echo "$FILE" >>"$INFO"
-			[[ -f "$FILE" -a ! -f $FILE~ ]] && {
-			mv -f "$FILE" "$FILE"~
-			echo "$FILE"~ >>"$INFO"
-		} || "$BAK" && [[ ! "$(grep "$FILE"$ "$INFO")" ]] && echo "$FILE" >>"$INFO"
-	}
-		install -D -m "$PERM" "$OFILE" "$FILE"
-	done
-}
-
+# Simplified script to inject variables into other scripts.
+# The complex copy/backup logic has been removed as it's not used by this module.
 install_script() {
-	case "$1" in
-		-l)
-			shift
-			INPATH="$NVBASE/service.d"
-			;;
-		-p)
-			shift
-			INPATH="$NVBASE/post-fs-data.d"
-			;;
-		*) INPATH="$NVBASE/service.d" ;;
-	esac
-	[[ "$(grep "#!/system/bin/sh" "$1")" ]] || sed -i "1i #!/system/bin/sh" "$1"
-	for i in "MODPATH" "LIBDIR" "MODID" "INFO" "MODDIR"; do
-		case "$i" in
-			"MODPATH") sed -i "1a $i=$NVBASE/modules/$MODID" "$1" ;;
-			"MODDIR") sed -i "1a $i=\${0%/*}" "$1" ;;
-			*) sed -i "1a $i=$(eval echo \$$i)" "$1" ;;
-		esac
-	done
-	[[ "$1" == "$MODPATH/uninstall.sh" ]] && return 0
-	case $(basename "$1") in
-		post-fs-data.sh | service.sh) ;;
-		*) cp_ch -n "$1" "$INPATH"/"$(basename "$1")" 0777 ;;
-	esac
+    local script_path="$1"
+
+    # The -p and -l flags are no longer needed, but we'll handle them for compatibility
+    if [ "$1" = "-p" ] || [ "$1" = "-l" ]; then
+        shift
+        script_path="$1"
+    fi
+
+    if [ ! -f "$script_path" ]; then return; fi
+
+    # Ensure the script has a shebang
+    if ! grep -q "^#!/system/bin/sh" "$script_path"; then
+        sed -i "1i #!/system/bin/sh" "$script_path"
+    fi
+
+    # Inject variables after the shebang, but only if they haven't been injected before
+    if ! grep -q "# AIO_VARS_INJECTED" "$script_path"; then
+        sed -i "2i # AIO_VARS_INJECTED\nMODPATH='$MODPATH'\nMODID='$MODID'\nINFO='$INFO'\nLIBDIR='$LIBDIR'" "$script_path"
+    fi
 }
 
-"$DEBUG" && {
-	ui_print "[*] Debug mode"
-	ui_print "    Module install log will include debug info"
-	ui_print ""
-	set -x
+# --- Volume Key Selector Functions ---
+
+# Find the correct input device for key events
+find_key_event_device() {
+    for device in /dev/input/event*; do
+        if grep -q "KEY_VOLUMEUP" "$device" && grep -q "KEY_VOLUMEDOWN" "$device"; then
+            KEY_EVENT_DEVICE="$device"
+            return
+        fi
+    done
+    KEY_EVENT_DEVICE=""
 }
 
-unzip -o "$ZIPFILE" -x 'META-INF/*' 'common/functions.sh' -d "$MODPATH" >&2
+# Wait for a key press and identify it
+key_check() {
+    if [ -z "$KEY_EVENT_DEVICE" ]; then
+        find_key_event_device
+    fi
 
-ui_print "[*] Removing old files..."
+    if [ -z "$KEY_EVENT_DEVICE" ]; then
+        abort "Error: Could not find volume key event device."
+    fi
 
-[[ -f "$INFO" ]] && {
-	while read LINE; do
-		[[ "$(echo -n "$LINE" | tail -c 1)" == "~" ]] && continue || [[ -f $LINE~ ]] && mv -f "$LINE"~ "$LINE" || rm -f "$LINE"
-			while true; do
-				LINE=$(dirname "$LINE")
-				[[ "$(ls -A "$LINE")" ]] && break 1 || rm -rf "$LINE"
-			done
-	done <"$INFO"
-	rm -f "$INFO"
+    local key_press
+    key_press=$(dd if="$KEY_EVENT_DEVICE" bs=1 count=1 2>/dev/null | od -t x1 | awk '{print $2}')
+
+    case "$key_press" in
+        "6a" | "73") # Volume Up
+            return 0
+            ;;
+        "69" | "72") # Volume Down
+            return 1
+            ;;
+        *) # Other key
+            return 2
+            ;;
+    esac
 }
 
-ui_print "[*] Installing for $ARCH SDK $API device..."
-for i in $(find "$MODPATH" -type f -name *.sh -o -name *.prop -o -name *.rule); do
-	[[ -f "$i" ]] && {
-		sed -i -e "/^#/d" -e "/^ *$/d" "$i"
-		[[ "$(tail -1 "$i")" ]] && echo "" >>"$i"
-	} || continue
-	case "$i" in
-		"$MODPATH/service.sh") install_script -l "$i" ;;
-		"$MODPATH/post-fs-data.sh") install_script -p "$i" ;;
-		"$MODPATH/uninstall.sh") [[ -s "$INFO" ]] || [[ "$(head -1 "$MODPATH/uninstall.sh")" != "# Don't modify anything after this" ]] && install_script "$MODPATH/uninstall.sh" || rm -f "$INFO" "$MODPATH"/uninstall.sh ;;
-	esac
-done
+# Generic list selection function
+# Usage: choose_from_list "Menu Title" "choices_array" "default_selection_index"
+choose_from_list() {
+    local title="$1"
+    local choices_str="$2"
+    local default_idx="$3"
 
-ui_print " "
-ui_print "[*] Setting Permissions..."
-set_perm_recursive "$MODPATH" 0 0 0777 0777
-[[ -d "$MODPATH/system/bin" ]] && set_perm_recursive "$MODPATH/system/bin" 0 0 0777 0777 u:object_r:system_bin_file:s0
+    # Convert string to array
+    local choices
+    eval "choices=($choices_str)"
 
-cleanup
+    local count=${#choices[@]}
+    local current_idx=$default_idx
+
+    while true; do
+        ui_print " "
+        ui_print "  $title"
+        ui_print " "
+        for i in $(seq 0 $((count - 1))); do
+            if [ "$i" -eq "$current_idx" ]; then
+                ui_print "  > [${choices[$i]}]"
+            else
+                ui_print "    [${choices[$i]}]"
+            fi
+        done
+        ui_print " "
+        ui_print "  Volume Up/Down to navigate, another key to select."
+
+        key_check
+        local result=$?
+
+        case $result in
+            0) # VolUp
+                current_idx=$(( (current_idx - 1 + count) % count ))
+                ;;
+            1) # VolDown
+                current_idx=$(( (current_idx + 1) % count ))
+                ;;
+            2) # Select
+                SELECTED_CHOICE_INDEX=$current_idx
+                return
+                ;;
+        esac
+    done
+}

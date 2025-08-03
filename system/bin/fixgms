@@ -1,9 +1,15 @@
 #!/system/bin/sh
 
-sync
+# This script is intended to help resolve issues with Google Mobile Services (GMS).
+# The previous implementation was unsafe and could cause system instability.
+# This revised version uses the official package manager command to clear GMS data,
+# which is a much safer and recommended way to reset the application's state.
 
-cd /data/data
+echo "Clearing Google Play Services data..."
+if pm clear com.google.android.gms; then
+    echo "Google Play Services data cleared successfully."
+else
+    echo "Failed to clear Google Play Services data. This may require root permissions or device-specific commands."
+fi
 
-find . -type f -name '*gms*' -delete
-
-echo "Reboot to apply changes."
+echo "A reboot is recommended to apply the changes fully."

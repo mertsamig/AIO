@@ -1,65 +1,75 @@
-#!/bin/sh
+#!/system/bin/sh
+
+# --- AIO Debloat Script ---
+# This script uninstalls a predefined list of apps for the current user (user 0).
+# This is generally safer than a full system-wide uninstall, as it can be
+# reverted for any app by using the command:
+# `pm install-existing --user 0 <package_name>`
+#
+# --- HOW TO CUSTOMIZE ---
+# To prevent an app from being uninstalled, simply put a '#' at the
+# beginning of the line with the app's package name. For example:
+# #"com.google.android.youtube"
 
 apps=(
-	"com.miui.analytics"
-	"com.google.android.setupwizard"
-	"com.mi.globalminusscreen"
-	"com.google.ambient.streaming"
-	"com.google.android.apps.restore"
-	"com.google.android.apps.docs"
-	"com.miui.bugreport"
-	"com.xiaomi.glgm"
-	"com.android.hotwordenrollment.xgoogle"
-	"com.android.hotwordenrollment.okgoogle"
-	"com.google.android.gms.location.history"
-	"com.google.android.apps.subscriptions.red"
-	"com.google.android.onetimeinitializer"
-	"com.google.android.partnersetup"
-	"com.google.android.videos"
-	"com.milink.service"
-	"com.google.android.feedback"
-	"com.google.android.apps.tachyon"
-	"com.facebook.system"
-	"com.facebook.appmanager"
-	"com.facebook.services"
-	"com.mi.globalbrowser"
-	"com.xiaomi.payment"
-	"com.xiaomi.mi_connect_service"
-	"com.miui.mishare.connectivity"
-	"com.miui.videoplayer"
-	"com.miui.msa.global"
+	"com.miui.analytics" # Xiaomi analytics and telemetry
+	"com.google.android.setupwizard" # Google Setup Wizard (runs on first boot)
+	"com.mi.globalminusscreen" # App vault or "minus screen" on Xiaomi devices
+	"com.google.ambient.streaming" # Google Ambient Mode / At a Glance
+	"com.google.android.apps.restore" # Google Backup/Restore service
+	"com.google.android.apps.docs" # Google Docs
+	"com.miui.bugreport" # Xiaomi bug reporting service
+	"com.xiaomi.glgm" # Xiaomi service, possibly related to games
+	"com.android.hotwordenrollment.xgoogle" # Google Assistant hotword enrollment
+	"com.android.hotwordenrollment.okgoogle" # Google Assistant hotword enrollment
+	"com.google.android.gms.location.history" # Google Location History
+	"com.google.android.apps.subscriptions.red" # Google One / Subscriptions
+	"com.google.android.onetimeinitializer" # Initializer for Google apps
+	"com.google.android.partnersetup" # Partner-specific Google setup
+	"com.google.android.videos" # Google TV / Play Movies
+	"com.milink.service" # Xiaomi MiLink service for screen sharing
+	"com.google.android.feedback" # Google Feedback service for reporting issues
+	"com.google.android.apps.tachyon" # Google Duo (now part of Meet)
+	"com.facebook.system" # Facebook system service stub
+	"com.facebook.appmanager" # Facebook App Manager
+	"com.facebook.services" # Facebook Services
+	"com.mi.globalbrowser" # Xiaomi Mi Browser
+	"com.xiaomi.payment" # Xiaomi Payment service
+	"com.xiaomi.mi_connect_service" # Xiaomi Mi Connect service
+	"com.miui.mishare.connectivity" # Xiaomi Mi Share service
+	"com.miui.videoplayer" # Xiaomi Mi Video player
+	"com.miui.msa.global" # MIUI System Ads (MSA)
 	#"com.miui.miservice"
 	#"com.miui.daemon"
-	"com.miui.yellowpage"
-	"com.google.android.youtube"
-	"com.google.android.apps.youtube.music"
-	"com.microsoft.appmanager"
-	"com.xiaomi.mirror"
-	"com.google.android.projection.gearhead"
-	"com.google.android.adservices.api"
-	"com.miui.phrase"
-	"com.mi.android.globalFileexplorer"
-	"com.google.android.healthconnect.controller"
+	"com.miui.yellowpage" # Xiaomi Yellow Pages integration
+	"com.google.android.youtube" # YouTube
+	"com.google.android.apps.youtube.music" # YouTube Music
+	"com.microsoft.appmanager" # Microsoft Your Phone companion
+	"com.xiaomi.mirror" # Xiaomi screen mirroring service
+	"com.google.android.projection.gearhead" # Android Auto
+	"com.google.android.adservices.api" # Android Ad Services API
+	"com.miui.phrase" # Xiaomi frequent phrases/clipboard helper
+	"com.mi.android.globalFileexplorer" # Xiaomi Mi File Explorer
+	"com.google.android.healthconnect.controller" # Google Health Connect
 	#"com.xiaomi.joyose"
-	"com.miui.player"
-	"com.google.android.apps.safetyhub"
-	"com.miui.touchassistant"
-	"com.tencent.soter.soterserver"
-	"com.google.android.tts"
-	"com.android.traceur"
-	"com.android.managedprovisioning"
-	"com.google.android.googlequicksearchbox"
-	"com.android.htmlviewer"
-	"com.google.android.apps.googleassistant"
-	"com.google.android.marvin.talkback"
-	"com.google.android.contactkeys"
-	"com.google.android.safetycore"
+	"com.miui.player" # Xiaomi Mi Music player
+	"com.google.android.apps.safetyhub" # Google Personal Safety app
+	"com.miui.touchassistant" # Xiaomi Quick Ball / Touch Assistant
+	"com.tencent.soter.soterserver" # Tencent Soter service for biometric authentication
+	"com.google.android.tts" # Google Text-to-Speech
+	"com.android.traceur" # System Tracing tool (developer feature)
+	"com.android.managedprovisioning" # Android Work Profile provisioning
+	"com.google.android.googlequicksearchbox" # Google Search bar and Assistant
+	"com.android.htmlviewer" # Basic HTML viewer for apps
+	"com.google.android.apps.googleassistant" # Google Assistant app
+	"com.google.android.marvin.talkback" # Android Accessibility Suite / TalkBack
+	"com.google.android.contactkeys" # Google Contact Keys (unclear function, may be for key transparency)
+	"com.google.android.safetycore" # Part of the Google Personal Safety components
 )
 
-# Uninstall the apps
+# Uninstall the apps for user 0
 for app in "${apps[@]}"; do
-	#pm uninstall "$app" > /dev/null 2>&1
-	#pm uninstall --user 0 "$app" > /dev/null 2>&1
-	#pm install-existing "$app" > /dev/null 2>&1
-	pm disable "$app" > /dev/null 2>&1
+	pm uninstall --user 0 "$app" > /dev/null 2>&1
 done
+
+echo "Debloat script finished."
