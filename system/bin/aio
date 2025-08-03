@@ -1,0 +1,549 @@
+#!/system/bin/sh
+
+klog="/storage/emulated/0/aio/aio.log"
+kdbg="/storage/emulated/0/aio/aio_dbg.log"
+
+rm -f "$kdbg" "$klog"
+
+: > "$kdbg"
+: > "$klog"
+
+log_i() {
+	echo "[$(date +%T)]: [*] $1" >> "$klog"
+	echo "" >> "$klog"
+}
+
+log_d() {
+	echo "$1" >> "$kdbg"
+	echo "$1"
+}
+
+log_e() {
+	echo "[!] $1" >> "$kdbg"
+	echo "[!] $1"
+}
+
+write() {
+    local file="$1"
+    local value="$2"
+    [[ ! -f "$file" ]] && {
+        log_e "$file doesn't exist"
+        return 1
+    }
+    
+    if [[ ! -w "$file" ]]; then
+        chmod +w "$file" 2>/dev/null || {
+            log_e "Cannot make $file writable"
+            return 1
+        }
+    fi
+    
+    local curval=$(cat "$file" 2>/dev/null)
+    [[ "$curval" == "$value" ]] && {
+        log_d "$file already set to $value"
+        return 0
+    }
+    
+    echo -n "$value" > "$file" 2>/dev/null || {
+        log_e "Failed to write $value to $file (current: $curval)"
+        return 1
+    }
+    
+    chmod -w "$file" 2>/dev/null
+    log_d "$file: $curval -> $value"
+}
+
+kill_svc() {
+    local svc="$1"
+	pid=$(pidof "$svc")
+	if [ -n "$pid" ]; then
+		kill -15 $pid
+		sleep 2
+		if kill -0 $pid 2>/dev/null; then
+			kill -9 $pid
+		fi
+	fi
+}
+
+dbg="/sys/kernel/debug/sched_features"
+f2fs="/sys/fs/f2fs/"
+fs="/proc/sys/fs/"
+gpu="/sys/class/kgsl/kgsl-3d0/"
+kdbg="/sdcard/aio/aio_dbg.log"
+kernel="/proc/sys/kernel/"
+klog="/sdcard/aio/aio.log"
+lmk="/sys/module/lowmemorykiller/parameters/"
+stune="/dev/stune/"
+tcp_v4="/proc/sys/net/ipv4/"
+vm="/proc/sys/vm/"
+mm="/sys/kernel/mm/"
+
+stop_services() {
+	services=(
+		"aplogd"
+		"charge_logger"
+		"cnss_diag"
+		"dumpstate"
+		"idd-logreader"
+		"idd-logreadermain"
+		"ipacm-diag"
+		"logcat"
+		"logcatd"
+		"logd"
+		"ramdump"
+		"stats"
+		"statscompanion"
+		"statsd"
+		"subsystem_ramdump"
+		"tcpdump"
+		"tombstoned"
+		"traced"
+		"traced_probes"
+		"vendor.cnss_diag"
+		"vendor.ipacm-diag"
+		"vendor.tcpdump"
+		"wlan_logging"
+		"miuibooster"
+    	"aee.log-1-1"
+    	"vendor_tcpdump"
+    	"emdlogger"
+    	"consyslogger"
+    	"mobile_log_d"
+    	"wifi_dump"
+    	"bt_dump"
+    	"cnss-daemon"
+	)
+	
+	for service in "${services[@]}"; do
+    	kill_svc "$service" &
+	done
+	wait
+	
+	log_i "Disabled few debug services and userspace daemons"
+}
+
+boost_tune() {
+	[[ -e "/sys/module/cpu_boost/parameters/dynamic_stune_boost" ]] && {
+		write "/sys/module/cpu_boost/parameters/dynamic_stune_boost" "0"
+		log_i "Disabled dynamic stune boost"
+	}
+	
+	[[ -d "/sys/module/cpu_boost/" ]] && {
+		write "/sys/module/cpu_boost/parameters/input_boost_ms" "0"
+		write "/sys/module/cpu_boost/parameters/sched_boost_on_input" "0"
+		write "/sys/module/cpu_boost/parameters/sched_boost_on_powerkey_input" "0"
+		write "/sys/module/cpu_boost/parameters/powerkey_input_boost_ms" "0"
+		log_i "Disabled CAF CPU input boost"
+	}
+	
+	[[ -d "/sys/module/cpu_input_boost/" ]] && {
+		write "/sys/module/cpu_input_boost/parameters/input_boost_duration" "0"
+		write "/sys/module/cpu_input_boost/parameters/wake_boost_duration" "0"
+		log_i "Disabled CPU input boost"
+	}
+	
+	write "${kernel}launcher_boost_enabled" "0"
+	write "${kernel}slide_boost_enabled" "0"
+	write "/sys/devices/system/cpu/sched/sched_boost" "0"
+	write "/sys/kernel/tracing/events/sched/sched_boost_cpu" "0"
+}
+
+io_tune() {
+	for queue in /sys/block/*/queue/; do
+		avail_scheds=`cat "${queue}scheduler"`
+		
+		for sched in none noop kyber bfq mq-deadline cfq; do
+			if [[ "$avail_scheds" == *"$sched"* ]]
+			then
+				write "${queue}scheduler" "$sched"
+				break
+			fi
+		done
+		
+		write "${queue}add_random" "0"
+		#write "${queue}io_poll" "0"
+		#write "${queue}iostats" "0"
+	done
+	
+	#for i in ${f2fs}*/; do
+		#write "${i}iostat_enable" "0"
+	#done
+	
+	log_i "Tweaked I/O scheduler"
+}
+
+cpu_tune() {
+	#write "/sys/module/mtk_core_ctl/parameters/policy_enable" "0"
+    #write "/sys/module/msm_thermal/parameters/enabled" "N"
+	#write "/sys/module/msm_thermal/core_control/enabled" "0"
+	#write "/sys/kernel/msm_thermal/enabled" "0"
+	
+	#for core in /sys/devices/system/cpu/cpu*/core_ctl/; do
+		#write "${core}enable" "0"
+	#done
+	
+	for cpu in /sys/devices/system/cpu/cpu*/cpufreq/; do
+		min_freq=`cat "${cpu}cpuinfo_min_freq"`
+		max_freq=`cat "${cpu}cpuinfo_max_freq"`
+		write "${cpu}scaling_min_freq" "$min_freq"
+		write "${cpu}scaling_max_freq" "$max_freq"
+		avail_scheds=`cat "${cpu}scaling_available_governors"`
+		for sched in sugov_ext schedutil; do
+			if [[ "$avail_scheds" == *"$sched"* ]]
+			then
+				write "${cpu}scaling_governor" "$sched"
+				write "${cpu}${sched}/hispeed_freq" "4294967295"
+				write "${cpu}${sched}/hispeed_load" "90"
+				write "${cpu}${sched}/iowait_boost_enable" "1"
+				write "${cpu}${sched}/pl" "1"
+				break
+			fi
+		done
+	done
+	
+	[[ -e "/sys/devices/system/cpu/cpuidle/use_deepest_state" ]] && {
+		write "/sys/devices/system/cpu/cpuidle/use_deepest_state" "1"
+		log_i "Allowed CPUs to use it's deepest sleep state"
+	}
+	
+	log_i "Tweaked CPU governor"
+}
+
+gpu_tune() {
+	[[ -d "$gpu" ]] && {
+		write "${gpu}bus_split" "1"
+		write "${gpu}devfreq/adrenoboost" "0"
+		write "${gpu}force_bus_on" "0"
+		write "${gpu}force_clk_on" "0"
+		write "${gpu}force_no_nap" "0"
+		write "${gpu}force_rail_on" "0"
+		write "${gpu}popp" "0"
+		write "${gpu}pwrnap" "1"
+		write "${gpu}thermal_pwrlevel" "0"
+		write "${gpu}throttling" "0"
+		write "${gpu}boost" "0"
+		write "${gpu}cl_boost_disable" "0"
+		
+		log_i "Tweaked GPU parameters"
+	}
+	
+	[[ -d "/sys/module/simple_gpu_algorithm/parameters/" ]] && {
+		write "/sys/module/simple_gpu_algorithm/parameters/simple_gpu_activate" "0"
+		log_i "Disabled SGPU algorithm"
+	}
+	
+	[[ -d "/sys/module/adreno_idler/" ]] && {
+		write "/sys/module/adreno_idler/parameters/adreno_idler_active" "N"
+		log_i "Disabled adreno idler"
+	}
+	
+}
+
+disable_crypto_tests() {
+	[[ -d "/sys/module/cryptomgr/" ]] && {
+		write "/sys/module/cryptomgr/parameters/notests" "Y"
+		log_i "Disabled forced cryptography tests"
+	}
+}
+
+schedtune_tune() {
+	[[ -d "$stune" ]] && {
+		write "${stune}background/schedtune.boost" "0"
+		write "${stune}background/schedtune.prefer_idle" "0"
+		write "${stune}background/schedtune.sched_boost" "0"
+		write "${stune}camera-daemon/schedtune.boost" "1"
+		write "${stune}camera-daemon/schedtune.prefer_idle" "1"
+		write "${stune}camera-daemon/schedtune.sched_boost" "0"
+		write "${stune}foreground/schedtune.boost" "1"
+		write "${stune}foreground/schedtune.prefer_idle" "0"
+		write "${stune}foreground/schedtune.sched_boost" "0"
+		write "${stune}rt/schedtune.boost" "0"
+		write "${stune}rt/schedtune.prefer_idle" "0"
+		write "${stune}rt/schedtune.sched_boost" "0"
+		write "${stune}schedtune.boost" "0"
+		write "${stune}schedtune.prefer_idle" "0"
+		write "${stune}schedtune.sched_boost" "0"
+		write "${stune}top-app/schedtune.boost" "1"
+		write "${stune}top-app/schedtune.prefer_idle" "1"
+		write "${stune}top-app/schedtune.sched_boost" "0"
+		log_i "Tweaked schedtune settings"
+	}
+}
+
+config_fs() {
+	[[ -d "$fs" ]] && {
+		#write "${fs}dir-notify-enable" "0"
+		write "${fs}lease-break-time" "10"
+		write "${fs}leases-enable" "1"
+		log_i "Tweaked FS"
+	}
+}
+
+config_dyn_fsync() {
+	[[ -d "/sys/kernel/dyn_fsync/" ]] && {
+		write "/sys/kernel/dyn_fsync/Dyn_fsync_active" "Y"
+		log_i "Enabled dynamic fsync"
+	}
+}
+
+disable_crc() {
+	[[ -d "/sys/module/mmc_core/" ]] && {
+		write "/sys/module/mmc_core/parameters/crc" "N"
+		write "/sys/module/mmc_core/parameters/removable" "N"
+		write "/sys/module/mmc_core/parameters/use_spi_crc" "N"
+		log_i "Disabled CRC"
+	}
+}
+
+sched_tune() {
+	write "${kernel}hung_task_timeout_secs" "0"
+	write "${kernel}perf_cpu_time_max_percent" "5"
+	#write "${kernel}printk_devkmsg" "off"
+	write "${kernel}sched_autogroup_enabled" "1"
+	write "${kernel}sched_boost" "0"
+	write "${kernel}sched_boost_top_app" "1"
+	write "${kernel}sched_child_runs_first" "0"
+	write "${kernel}sched_conservative_pl" "1"
+	write "${kernel}sched_cstate_aware" "1"
+	write "${kernel}sched_energy_aware" "1"
+	write "${kernel}sched_init_task_load" "20"
+	write "${kernel}sched_initial_task_util" "0"
+	write "${kernel}sched_migration_fixup" "0"
+	write "${kernel}sched_min_task_util_for_boost" "0"
+	write "${kernel}sched_min_task_util_for_colocation" "0"
+	write "${kernel}sched_prefer_sync_wakee_to_waker" "1"
+	#write "${kernel}sched_schedstats" "0"
+	write "${kernel}sched_tunable_scaling" "0"
+	write "${kernel}sched_walt_rotate_big_tasks" "1"
+	write "${kernel}timer_migration" "1"
+	write "/proc/sys/dev/tty/ldisc_autoload" "0"
+	write "/sys/devices/system/cpu/cpufreq/hotplug/cpu_hotplug_disable" "1"
+	write "/sys/devices/system/cpu/sched/hint_enable" "0"
+	write "/sys/devices/system/cpu/eas/enable" "1"
+	#write "/sys/devices/system/cpu/perf/enable" "1"
+	write "/sys/kernel/debug/msm_vidc/disable_thermal_mitigation" "0"
+	#write "/sys/kernel/rcu_expedited" "0"
+	#write "/sys/kernel/rcu_normal" "1"
+	log_i "Tweaked various kernel parameters to a better overall performance"
+}
+
+fp_boost() {
+	[[ -d "/sys/kernel/fp_boost/" ]] && {
+		write "/sys/kernel/fp_boost/enabled" "0"
+		log_i "Disabled fingerprint boost"
+	}
+}
+
+vm_lmk_tune() {
+	sync
+	write "${lmk}enable_adaptive_lmk" "0"
+	write "${lmk}lmk_fast_run" "0"
+	write "${lmk}oom_reaper" "1"
+	write "${vm}block_dump" "0"
+	write "${vm}dirty_background_ratio" "10"
+	#write "${vm}dirty_expire_centisecs" "3000"
+	write "${vm}dirty_ratio" "30"
+	#write "${vm}dirty_writeback_centisecs" "3000"
+	#write "${vm}extfrag_threshold" "750"
+	write "${vm}laptop_mode" "0"
+	write "${vm}oom_dump_tasks" "0"
+	write "${vm}overcommit_memory" "1"
+	write "${vm}overcommit_ratio" "100"
+	#write "${vm}page-cluster" "2"
+	write "${vm}reap_mem_on_sigkill" "1"
+	#write "${vm}stat_interval" "10"
+	#write "${vm}vfs_cache_pressure" "100"
+	write "${vm}swappiness" "40"
+	write "${mm}lru_gen/enabled" "Y"
+	write "${mm}lru_gen/min_ttl_ms" "1000"
+	write "${mm}swap/vma_ra_enabled" "true"
+	write "/sys/module/process_reclaim/parameters/enable_process_reclaim" "0"
+	#write "${mm}transparent_hugepage/khugepaged/defrag" "0"
+	#write "${mm}transparent_hugepage/defrag" "never"
+	#write "${mm}transparent_hugepage/enabled" "never"
+	#write "${mm}transparent_hugepage/shmem_enabled" "never"
+	#write "${mm}transparent_hugepage/use_zero_page" "0"
+	write "${vm}compact_unevictable_allowed" "0"
+	write "${vm}compaction_proactiveness" "0"
+	log_i "Tweaked various VM and LMK parameters for a improved user-experience"
+}
+
+pewq() {
+	[[ -e "/sys/module/workqueue/parameters/power_efficient" ]] && {
+		write "/sys/module/workqueue/parameters/power_efficient" "Y"
+		log_i "Enabled power efficient workqueue"
+	}
+}
+
+config_tcp() {
+	avail_con=`cat "${tcp}tcp_available_congestion_control"`
+	
+	for con in bbr2 bbr c2tcp cdg westwood cubic; do
+		if [[ "$avail_con" == *"$con"* ]]
+		then
+			write "${tcp_v4}tcp_congestion_control" "$con"
+			break
+		fi
+	done
+	
+	write "${tcp_v4}ip_no_pmtu_disc" "0"
+	write "${tcp_v4}tcp_ecn" "1"
+	write "${tcp_v4}tcp_fastopen" "3"
+	write "${tcp_v4}tcp_mtu_probing" "1"
+	write "${tcp_v4}tcp_sack" "1"
+	write "${tcp_v4}tcp_slow_start_after_idle" "0"
+	write "${tcp_v4}tcp_timestamps" "1"
+	write "${tcp_v4}tcp_tw_recycle" "1"
+	write "${tcp_v4}tcp_tw_reuse" "1"
+	write "${tcp_v4}tcp_window_scaling" "1"
+	write "/proc/sys/net/core/netdev_max_backlog" "65536"
+	log_i "Applied TCP tweaks"
+}
+
+kern_pwrsave() {
+	[[ -d "/sys/module/battery_saver/" ]] && {
+		write "/sys/module/battery_saver/parameters/enabled" "N"
+		log_i "Disabled kernel battery saver"
+	}
+}
+
+pm2_idle_mode() {
+	[[ -d "/sys/module/pm2/parameters/" ]] && {
+		write "/sys/module/pm2/parameters/idle_sleep_mode" "Y"
+		log_i "Enabled pm2 idle sleep mode"
+	}
+}
+
+enable_usb_fast_chrg() {
+	[[ -e "/sys/kernel/fast_charge/force_fast_charge" ]] && {
+		write "/sys/kernel/fast_charge/force_fast_charge" "1"
+		log_i "Enabled USB 3.0 fast charging"
+	}
+}
+
+disable_debug() {
+    useless=(
+        "debug"
+        "compat-log"
+        "debug_level"
+        "debug_mask"
+        "debug_mode"
+        "edac_mc_log"
+        "enable_event_log"
+        "enable_ramdumps"
+        "log_ce"
+        "log_ecn_error"
+        "log_enabled"
+        "log_level"
+        "log_ue"
+        "mballoc_debug"
+        "seclog"
+        "snapshot_crashdumper"
+        "tracing_on"
+    )
+    
+	for keyword in "${useless[@]}"; do
+		for file in $(find /sys/ -type f -name "$keyword"); do
+			write "$file" "0"
+		done
+	done
+	
+	write "${kernel}compat-log" "0"
+	write "${kernel}panic" "0"
+	write "${kernel}panic_on_oops" "0"
+	write "${kernel}printk" "0 0 0 0"
+	write "${kernel}softlockup_panic" "0"
+	write "${vm}panic_on_oom" "0"
+	write "/proc/sys/debug/exception-trace" "0"
+	write "/sys/kernel/debug/debug_enabled" "0"
+	write "/sys/kernel/debug/dri/0/debug/enable" "0"
+	write "/sys/kernel/debug/rpm_log" "0"
+	write "/sys/kernel/debug/sde_rotator0/clk_always_on" "0"
+	write "/sys/kernel/debug/sde_rotator0/evtlog/enable" "0"
+	write "/sys/kernel/printk_mode/printk_mode" "0"
+	write "/sys/module/bluetooth/parameters/disable_ertm" "Y"
+	write "/sys/module/bluetooth/parameters/disable_esco" "Y"
+	write "/sys/module/dwc3/parameters/ep_addr_rxdbg_mask" "0" 
+	write "/sys/module/dwc3/parameters/ep_addr_txdbg_mask" "0"
+	write "/sys/module/hid_apple/parameters/fnmode" "0"
+	write "/sys/module/hid_magicmouse/parameters/emulate_3button" "N"
+	write "/sys/module/hid_magicmouse/parameters/emulate_scroll_wheel" "N"
+	write "/sys/module/logger/parameters/log_mode" "2"
+	write "/sys/module/mdss_fb/parameters/backlight_dimmer" "N"
+	write "/sys/module/otg_wakelock/parameters/enabled" "N" 
+	write "/sys/module/printk/parameters/console_suspend" "Y"
+	write "/sys/module/service_locator/parameters/enable" "0" 
+	write "/sys/module/spurious/parameters/noirqdebug" "Y"
+	log_i "Disabled misc debugging"
+}
+
+disable_tb() {
+	[[ -e "/sys/module/msm_performance/parameters/touchboost" ]] && {
+		write "/sys/module/msm_performance/parameters/touchboost" "0"
+		log_i "Disabled msm_performance touch boost"
+	} || [[ -e "/sys/power/pnpmgr/touch_boost" ]] && {
+		write "/sys/power/pnpmgr/long_duration_touch_boost" "0"
+		write "/sys/power/pnpmgr/touch_boost" "0"
+		log_i "Disabled pnpmgr touch boost"
+	} || [[ -d "/proc/touch_boost/" ]] && {
+		write "/proc/touch_boost/enable" "0"
+		write "/proc/touch_boost/boost_duration" "0"
+		log_i "Disabled touch boost"
+	}
+}
+
+dexopt() {
+	cmd package bg-dexopt-job
+	#pm compile -m everything -a
+	#pm compile -m everything --secondary-dex -a
+	#pm compile --compile-layouts -a
+
+	#pm compile -m everything --full -a
+	#pm art dexopt-packages -r bg-dexopt
+	#pm art cleanup
+	log_i "Background optimization task executed"
+}
+
+log_i "Initializing"
+init=$(date +%s)
+sync
+
+write "/sys/class/thermal/thermal_message/sconfig" "10"
+#write "/sys/kernel/fpsgo/common/fpsgo_enable" "1"
+#write "/sys/kernel/fpsgo/minitop/enable" "1"
+#write "/sys/kernel/fpsgo/composer/control_hwui" "1"
+#write "/sys/kernel/fpsgo/composer/fpsgo_control" "1"
+#for param in adjust_loading boost_affinity boost_LR gcc_hwui_hint d_boost loading_enable perfmgr_enable; do
+#    write "/sys/module/mtk_fpsgo/parameters/$param" "1"
+#done
+#write "/sys/module/ged/parameters/ged_boost_enable" "1"
+
+dexopt &
+#stop_services &
+disable_crc 
+#disable_crypto_tests 
+config_fs 
+config_dyn_fsync 
+#config_tcp 
+enable_usb_fast_chrg 
+#disable_debug 
+io_tune 
+boost_tune 
+cpu_tune 
+gpu_tune 
+schedtune_tune 
+sched_tune 
+vm_lmk_tune 
+pewq 
+disable_tb 
+fp_boost 
+pm2_idle_mode 
+kern_pwrsave
+
+wait
+log_i "Tweaks applied. Enjoy!"
+exit=$(date +%s)
+exec_time=$((exit - init))
+log_i "Spent time: $exec_time seconds."
+exit 0
+

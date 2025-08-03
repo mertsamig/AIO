@@ -1,0 +1,25 @@
+#!/bin/bash
+
+echo "Resetting Android settings..."
+for namespace in global system secure; do
+    echo "Processing namespace: $namespace"
+    settings list "$namespace" | while read line; do
+        key=$(echo "$line" | cut -d= -f1)
+        echo "Resetting $namespace setting: $key"
+        settings delete "$namespace" "$key"
+    done
+done
+
+echo "Resetting device_config entries..."
+
+namespaces=$(device_config list | cut -d'/' -f1 | sort -u)
+for namespace in $namespaces; do
+    echo "Processing device_config namespace: $namespace"
+    device_config list "$namespace" | while read line; do
+        key=$(echo "$line" | cut -d= -f1)
+        echo "Resetting $namespace configuration: $key"
+        device_config delete "$namespace" "$key"
+    done
+done
+
+echo "Reset process completed."
