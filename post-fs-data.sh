@@ -12,14 +12,15 @@ IS_MIUI=$(getprop ro.miui.ui.version.name)
 # settings put global mobile_data_always_on 0 # User preference
 # settings put global network_recommendations_enabled 0 # Redundant
 # settings put global wifi_scan_always_enabled 0 # User preference
+# resetprop -n persist.vendor.camera.realtimethread 1 # Unproved: effect on performance is unclear
+# resetprop -n debug.sf.enable_layer_command_batching true # Unproved: may cause rendering issues
+# settings put system windowsmgr.max_events_per_sec 300 # Placebo: legacy property from early Android
 
 # --- System Performance & Responsiveness ---
 # Disable tracing to reduce system overhead
 resetprop -n debug.atrace.tags.enableflags 0
 resetprop -n debug.hwui.skia_atrace_enabled false
 
-# Increase priority for camera threads
-resetprop -n persist.vendor.camera.realtimethread 1
 # Optimize Skia rendering by reducing task splitting
 resetprop -n renderthread.skia.reduceopstasksplitting true
 
@@ -43,12 +44,13 @@ resetprop -n dalvik.vm.heapminfree 512k
 resetprop -n dalvik.vm.heapmaxfree 8m
 resetprop -n dalvik.vm.heaptargetutilization 0.75
 
-# Reduce input latency by adjusting latching behavior
-resetprop -n debug.sf.latch_unsignaled 0
-resetprop -n debug.sf.auto_latch_unsignaled 1
+# Reduce input latency by adjusting latching behavior (Android 13+)
+if [ "$SDK_VERSION" -ge 33 ]; then
+    resetprop -n debug.sf.latch_unsignaled 0
+    resetprop -n debug.sf.auto_latch_unsignaled 1
+fi
 
-# Enable layer command batching and multithreaded present for SurfaceFlinger
-resetprop -n debug.sf.enable_layer_command_batching true
+# Enable multithreaded present for SurfaceFlinger
 resetprop -n debug.sf.multithreaded_present true
 # Backpressure reduces UI stuttering by controlling frame production rate
 resetprop -n debug.sf.enable_gl_backpressure 1
@@ -64,7 +66,6 @@ resetprop -n ro.lmk.use_psi true
 # Improve scrolling and touch responsiveness
 resetprop -n ro.max.fling_velocity 15000
 resetprop -n ro.min.fling_velocity 8000
-settings put system windowsmgr.max_events_per_sec 300
 
 # --- MIUI Specific ---
 if [ -n "$IS_MIUI" ]; then

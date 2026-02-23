@@ -62,7 +62,8 @@ case "$PLATFORM" in
 esac
 
 stop_services() {
-    # Disable heavy debug and logging services to free up resources
+    # Disable heavy debug and logging services to free up resources.
+    # These services are often used for diagnostics and consume background CPU/RAM.
     services="aplogd charge_logger cnss_diag dumpstate idd-logreader idd-logreadermain ipacm-diag logcat logcatd logd ramdump stats statscompanion statsd subsystem_ramdump tcpdump tombstoned traced traced_probes vendor.cnss_diag vendor.ipacm-diag vendor.tcpdump wlan_logging miuibooster aee.log-1-1 vendor_tcpdump emdlogger consyslogger mobile_log_d wifi_dump bt_dump cnss-daemon"
 
     for service in $services; do
@@ -73,8 +74,8 @@ stop_services() {
 }
 
 boost_tune() {
-    # Boost mechanisms are generally disabled in balanced profile to save power
-    # while relying on modern scheduler efficiency.
+    # CPU boost mechanisms are generally disabled to save power,
+    # relying on the efficiency of modern schedulers (PELT/WALT).
     write "${kernel}launcher_boost_enabled" "0"
     write "${kernel}slide_boost_enabled" "0"
 
@@ -82,12 +83,13 @@ boost_tune() {
 }
 
 io_tune() {
-    # Optimize I/O scheduler and queue parameters for better throughput
+    # Optimize I/O scheduler and queue parameters for better throughput and lower latency.
     for queue in /sys/block/*/queue/; do
         [ ! -d "$queue" ] && continue
         avail_scheds=$(cat "${queue}scheduler" 2>/dev/null)
 
-        # Prefer modern schedulers
+        # Prefer modern multiqueue schedulers.
+        # mq-deadline is often best for flash storage.
         for sched in mq-deadline kyber bfq none; do
             if echo "$avail_scheds" | grep -q "$sched"; then
                 write "${queue}scheduler" "$sched"
@@ -95,18 +97,19 @@ io_tune() {
             fi
         done
 
-        write "${queue}add_random" "0" # Disable entropy contribution (saves CPU)
-        write "${queue}iostats" "0"    # Disable I/O statistics gathering
-        write "${queue}nr_requests" "128" # Balanced value
+        write "${queue}add_random" "0" # Disable entropy contribution to save CPU cycles.
+        write "${queue}iostats" "0"    # Disable I/O statistics gathering to reduce overhead.
+        write "${queue}nr_requests" "128" # Balanced value for queue depth.
 
-        # bfq tunables: enable low latency mode for better UI responsiveness
+        # bfq tunables: enable low latency mode for better UI responsiveness when under I/O load.
         [ -f "${queue}iosched/low_latency" ] && write "${queue}iosched/low_latency" "1"
     done
     log_i "Tweaked I/O parameters (Balanced)"
 }
 
 cpu_tune() {
-    # Uclamp tuning: improves responsiveness by setting a small minimum utilization for top-app tasks
+    # Uclamp (Utilization Clamping): Improves responsiveness by setting a minimum utilization
+    # for tasks in the 'top-app' group, ensuring they get scheduled on capable CPUs.
     if [ -d "/dev/cpuctl/top-app" ]; then
         write "/dev/cpuctl/top-app/cpu.uclamp.min" "1"
         write "/dev/cpuctl/top-app/cpu.uclamp.latency_sensitive" "1"
@@ -115,20 +118,24 @@ cpu_tune() {
     # Scheduler migration thresholds:
     # upmigrate (default ~95): threshold for migrating task to a more powerful CPU. Lower = more aggressive.
     # downmigrate (default ~85): threshold for migrating task to a less powerful CPU. Lower = more aggressive.
+    # Setting these to slightly lower than default (90/75) improves responsiveness.
     write "${kernel}sched_upmigrate" "90"
     write "${kernel}sched_downmigrate" "75"
 
     # Platform specific CPU tuning
     if [ "$IS_MTK" = "1" ]; then
+        # MediaTek Core Control and FPSGO: specific optimizations for MTK platforms.
         write "/sys/module/mtk_core_ctl/parameters/policy_enable" "0"
         write "/sys/kernel/fpsgo/common/fpsgo_enable" "1"
     fi
 
     if [ "$IS_QCOM" = "1" ]; then
+        # Qualcomm MSM Thermal: disabling can improve performance but increase heat.
+        # Kept disabled as per original script for maximum performance headroom.
         write "/sys/module/msm_thermal/parameters/enabled" "N"
     fi
 
-    # Set governor to schedutil if available (modern Android default)
+    # Set CPU governor to 'schedutil' if available (the modern default for Android).
     for cpu in /sys/devices/system/cpu/cpu*/cpufreq/; do
         [ ! -d "$cpu" ] && continue
         avail_govs=$(cat "${cpu}scaling_available_governors" 2>/dev/null)
@@ -143,7 +150,8 @@ cpu_tune() {
 }
 
 gpu_tune() {
-    # Qualcomm Adreno GPU tweaks
+    # Qualcomm Adreno GPU tweaks:
+    # adrenoboost can improve FPS in games but increases power usage.
     if [ "$IS_QCOM" = "1" ] && [ -d "$gpu" ]; then
         write "${gpu}devfreq/adrenoboost" "0"
         write "${gpu}throttling" "1"
@@ -152,7 +160,8 @@ gpu_tune() {
 }
 
 schedtune_tune() {
-    # Schedtune: Task placement and boosting
+    # Schedtune: Task placement and boosting via Energy Aware Scheduling (EAS).
+    # Small boosts for foreground and top-app tasks improve perceived smoothness.
     if [ -d "$stune" ]; then
         write "${stune}foreground/schedtune.boost" "1"
         write "${stune}top-app/schedtune.boost" "1"
@@ -161,33 +170,34 @@ schedtune_tune() {
 }
 
 vm_lmk_tune() {
-    # Virtual Memory tuning
+    # Virtual Memory and LMK tuning for better memory management and reduced lag.
     write "${vm}dirty_ratio" "20"
     write "${vm}dirty_background_ratio" "5"
-    write "${vm}vfs_cache_pressure" "100"
-    write "${vm}overcommit_memory" "1"
-    write "${vm}page-cluster" "0" # Optimize for ZRAM/SSD
-    write "${vm}swappiness" "60" # Balanced value
+    write "${vm}vfs_cache_pressure" "100" # Balanced pressure on VFS cache.
+    write "${vm}overcommit_memory" "1"     # Allow memory overcommit for better flexibility.
+    write "${vm}page-cluster" "0"          # Reduce read-ahead on swap to optimize for ZRAM latency.
+    write "${vm}swappiness" "60"           # Balanced swap priority.
 
-    # MGLRU: Greatly improves memory management on modern kernels
+    # MGLRU (Multi-Gen LRU): Greatly improves memory management by identifying "hot" pages more accurately.
     if [ -e "${mm}lru_gen/enabled" ]; then
         write "${mm}lru_gen/enabled" "Y"
     fi
 
+    # Disable proactive compaction to reduce background CPU jitter.
     write "${vm}compaction_proactiveness" "0"
 
-    # Transparent Hugepages: Disabled in balanced profile to save RAM
+    # Transparent Hugepages (THP): Disabled to save RAM, as it can cause significant internal fragmentation.
     if [ -e "/sys/kernel/mm/transparent_hugepage/enabled" ]; then
         write "/sys/kernel/mm/transparent_hugepage/enabled" "never"
     fi
 
-    # Watermark tuning to reduce background jitter and direct reclaim
-    # Disable watermark boosting (reduces kswapd wakeups)
+    # Watermark tuning:
+    # Disabling watermark boost reduces kswapd wakeups, saving power and reducing jitter.
     write "${vm}watermark_boost_factor" "0"
-    # Scale factor: increase to start background reclaim earlier (prevents direct reclaim)
+    # watermark_scale_factor: Increase to start background reclaim earlier, avoiding "direct reclaim" lag.
     write "${vm}watermark_scale_factor" "100"
 
-    # ZRAM optimization: selection of faster compression algorithms and read-ahead
+    # ZRAM optimization: Select the best available compression algorithm for swap performance.
     if [ -d "/sys/block/zram0" ]; then
         avail_algos=$(cat /sys/block/zram0/comp_algorithm 2>/dev/null)
         for algo in zstd lz4 lzo-rle lzo; do
@@ -199,7 +209,7 @@ vm_lmk_tune() {
         write "/sys/block/zram0/queue/read_ahead_kb" "2048"
     fi
 
-    # KSM (Kernel Samepage Merging): Enable for RAM saving
+    # KSM (Kernel Samepage Merging): Enable to save RAM by merging identical pages.
     if [ -e "/sys/kernel/mm/ksm/run" ]; then
         write "/sys/kernel/mm/ksm/run" "1"
     fi
@@ -208,7 +218,7 @@ vm_lmk_tune() {
 }
 
 config_tcp() {
-    # Networking: Choose best congestion control available
+    # Networking: Choose the best available congestion control algorithm (BBR/BBR2 preferred).
     avail_con=$(cat "${tcp_v4}tcp_available_congestion_control" 2>/dev/null)
     for con in bbr bbr2 westwood cubic; do
         if echo "$avail_con" | grep -q "$con"; then
@@ -217,13 +227,13 @@ config_tcp() {
         fi
     done
 
-    write "${tcp_v4}tcp_fastopen" "3"
-    write "${tcp_v4}tcp_slow_start_after_idle" "0"
+    write "${tcp_v4}tcp_fastopen" "3"           # Enable TCP Fast Open for both client and server.
+    write "${tcp_v4}tcp_slow_start_after_idle" "0" # Keep congestion window after idle.
     log_i "Applied TCP tweaks"
 }
 
 pewq() {
-    # Power efficient workqueue
+    # Power Efficient Workqueue: Improves battery life by allowing workqueues to be power-aware.
     if [ -e "/sys/module/workqueue/parameters/power_efficient" ]; then
         write "/sys/module/workqueue/parameters/power_efficient" "Y"
         log_i "Tuned power efficient workqueue (Balanced)"
@@ -231,10 +241,10 @@ pewq() {
 }
 
 disable_debug() {
-    # Disable kernel logging and various debug masks
+    # Disable kernel logging and various tracers to reduce system overhead and improve security.
     write "${kernel}printk" "0 0 0 0"
 
-    # Disable various tracers and statistics to reduce overhead
+    # Disable scheduler statistics and tracing.
     write "${kernel}sched_schedstats" "0"
     write "/sys/kernel/debug/tracing/tracing_on" "0"
 
