@@ -3,6 +3,7 @@
 LOG_FILE="/storage/emulated/0/aio/dga.log"
 DBG_LOG_FILE="/storage/emulated/0/aio/dga_dbg.log"
 
+mkdir -p /storage/emulated/0/aio/
 : > "$LOG_FILE"
 : > "$DBG_LOG_FILE"
 
@@ -24,7 +25,11 @@ for package in $PACKAGES; do
     components=$(dumpsys package "$package" | grep -Ei "$KEYWORD_PATTERN")
     
     if [ -n "$components" ]; then
-        while read -r component; do
+        # Use a temporary IFS to iterate over lines without a subshell
+        OLDIFS=$IFS
+        IFS='
+'
+        for component in $components; do
             PROCESSED_COUNT=$((PROCESSED_COUNT + 1))
             component_name=$(echo "$component" | cut -d ' ' -f 2)
             
@@ -34,7 +39,8 @@ for package in $PACKAGES; do
                     DISABLED_COUNT=$((DISABLED_COUNT + 1))
                 fi
             fi
-        done <<< "$components"
+        done
+        IFS=$OLDIFS
     fi
 done
 

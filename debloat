@@ -1,66 +1,29 @@
 #!/bin/sh
 
-apps=(
-	"com.miui.analytics"
-	"com.google.android.setupwizard"
-	"com.mi.globalminusscreen"
-	"com.google.ambient.streaming"
-	"com.google.android.apps.restore"
-	"com.google.android.apps.docs"
-	"com.miui.bugreport"
-	"com.xiaomi.glgm"
-	"com.android.hotwordenrollment.xgoogle"
-	"com.android.hotwordenrollment.okgoogle"
-	"com.google.android.gms.location.history"
-	"com.google.android.apps.subscriptions.red"
-	"com.google.android.onetimeinitializer"
-	"com.google.android.partnersetup"
-	"com.google.android.videos"
-	"com.milink.service"
-	"com.google.android.feedback"
-	"com.google.android.apps.tachyon"
-	"com.facebook.system"
-	"com.facebook.appmanager"
-	"com.facebook.services"
-	"com.mi.globalbrowser"
-	"com.xiaomi.payment"
-	"com.xiaomi.mi_connect_service"
-	"com.miui.mishare.connectivity"
-	"com.miui.videoplayer"
-	"com.miui.msa.global"
-	#"com.miui.miservice"
-	#"com.miui.daemon"
-	"com.miui.yellowpage"
-	"com.google.android.youtube"
-	"com.google.android.apps.youtube.music"
-	"com.microsoft.appmanager"
-	"com.xiaomi.mirror"
-	"com.google.android.projection.gearhead"
-	"com.google.android.adservices.api"
-	"com.miui.phrase"
-	"com.mi.android.globalFileexplorer"
-	"com.google.android.healthconnect.controller"
-	#"com.xiaomi.joyose"
-	"com.miui.player"
-	"com.google.android.apps.safetyhub"
-	"com.miui.touchassistant"
-	"com.tencent.soter.soterserver"
-	"com.google.android.tts"
-	"com.android.traceur"
-	"com.android.managedprovisioning"
-	"com.google.android.googlequicksearchbox"
-	"com.android.htmlviewer"
-	"com.google.android.apps.googleassistant"
-	"com.google.android.marvin.talkback"
-	"com.google.android.contactkeys"
-	"com.google.android.safetycore"
-	"com.google.android.apps.wellbeing"
-)
+# List of apps to disable.
 
-# Uninstall the apps
-for app in "${apps[@]}"; do
-	#pm uninstall "$app" > /dev/null 2>&1
-	#pm uninstall --user 0 "$app" > /dev/null 2>&1
-	#pm install-existing "$app" > /dev/null 2>&1
-	pm disable "$app" > /dev/null 2>&1
+# --- Analytics & Tracking (Safe to disable) ---
+apps="com.miui.analytics com.miui.msa.global com.miui.bugreport com.google.android.feedback com.google.android.apps.wellbeing com.google.android.adservices.api"
+
+# --- Social & Bloatware (Safe to disable) ---
+apps="$apps com.facebook.system com.facebook.appmanager com.facebook.services com.microsoft.appmanager com.google.android.videos com.google.android.apps.tachyon"
+
+# --- MIUI Specific Bloat (Mostly safe) ---
+apps="$apps com.mi.globalminusscreen com.mi.globalbrowser com.xiaomi.glgm com.xiaomi.payment com.miui.videoplayer com.miui.player com.miui.yellowpage com.miui.touchassistant com.xiaomi.mirror com.milink.service"
+
+# --- Assistant & Hotword (Safe to disable if not using) ---
+apps="$apps com.android.hotwordenrollment.xgoogle com.android.hotwordenrollment.okgoogle"
+
+# --- Miscellaneous ---
+apps="$apps com.android.traceur com.google.android.apps.restore com.google.android.onetimeinitializer com.google.android.partnersetup com.google.android.apps.subscriptions.red"
+
+# Setup Wizard Safety Check
+PROVISIONED=$(getprop device_provisioned)
+if [ "$PROVISIONED" = "1" ]; then
+    pm disable "com.google.android.setupwizard" > /dev/null 2>&1
+fi
+
+# Disable the apps
+for app in $apps; do
+    pm disable "$app" > /dev/null 2>&1
 done
