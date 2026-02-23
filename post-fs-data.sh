@@ -41,6 +41,10 @@ if [ "$MOD_PROFILE" != "battery" ]; then
     resetprop -n dalvik.vm.dex2oat64.enabled true
     resetprop -n dalvik.vm.dexopt.secondary true
     resetprop -n dalvik.vm.dex2oat-resolve-startup-strings true
+    # Heap tuning for better GC efficiency
+    resetprop -n dalvik.vm.heapminfree 512k
+    resetprop -n dalvik.vm.heapmaxfree 8m
+    resetprop -n dalvik.vm.heaptargetutilization 0.75
 
     # Reduce input latency by adjusting latching behavior
     resetprop -n debug.sf.latch_unsignaled 0
@@ -51,6 +55,14 @@ if [ "$MOD_PROFILE" != "battery" ]; then
     resetprop -n debug.sf.multithreaded_present true
     # Backpressure reduces UI stuttering by controlling frame production rate
     resetprop -n debug.sf.enable_gl_backpressure 1
+
+    # LMKD (Low Memory Killer Daemon) tuning
+    # Kill the heaviest task to free up memory faster
+    resetprop -n ro.lmk.kill_heaviest_task true
+    # Decrease kill timeout for faster memory reclamation
+    resetprop -n ro.lmk.kill_timeout_ms 100
+    # Use PSI (Pressure Stall Information) for more accurate memory pressure detection
+    resetprop -n ro.lmk.use_psi true
 
     # Improve scrolling and touch responsiveness
     resetprop -n ro.max.fling_velocity 15000
@@ -74,6 +86,8 @@ if [ "$MOD_PROFILE" != "battery" ]; then
     device_config put activity_manager proactive_kills_enabled false
 else
     device_config put activity_manager proactive_kills_enabled true
+    # Limit cached processes for battery saving
+    device_config put activity_manager max_cached_processes 32
 fi
 
 # App compaction: Saves CPU cycles when disabled, but increases RAM usage
@@ -120,6 +134,11 @@ device_config put netd_native sort_nameservers true
 # Improve Wi-Fi switching and scoring
 settings put global wifi_badging_thresholds "10:1000,20:2000,30:4000,40:8000,50:16000"
 settings put global wifi_score_params "rssi2=-95:-87:-73:-60,rssi5=-90:-85:-70:-57,rssi6=-90:-85:-70:-57"
+
+if [ "$MOD_PROFILE" = "battery" ]; then
+    settings put global ble_scan_always_enabled 0
+    settings put global wifi_scan_always_enabled 0
+fi
 
 # --- Secure Settings ---
 # Enable system speed mode and disable error reporting

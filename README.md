@@ -7,7 +7,8 @@ This repository contains a collection of scripts designed to optimize Android sy
 - **Performance Profiles:** Choose between `balance`, `performance`, and `battery` profiles.
 - **Hardware-Aware Tweaks:** Automatically detects and applies tweaks for Qualcomm (Adreno) and MediaTek (MTK) platforms.
 - **Input & Scrolling:** Improved touch responsiveness and faster scrolling velocity.
-- **Memory Management:** zRAM algorithm selection (`zstd`/`lz4`), MGLRU, and watermark tuning.
+- **Memory & LMKD:** zRAM algorithm selection (`zstd`/`lz4`), MGLRU, watermark tuning, and optimized LMKD strategy.
+- **I/O & Networking:** Fine-tuned I/O scheduler parameters and TCP buffer sizes.
 - **DEX Optimization:** Manages background app optimization via `bg-dexopt-job`.
 - **Debloating:** Disables common system bloatware and analytics packages.
 - **Clean Trash:** Automatically removes temporary junk files and app caches on boot.

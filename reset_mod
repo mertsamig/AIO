@@ -8,7 +8,7 @@ for namespace in system secure global; do
     case $namespace in
         system) keys="deviceLevelList miui_app_cache_optimization speed_mode windowsmgr.max_events_per_sec" ;;
         secure) keys="speed_mode_enable send_action_app_error screensaver_activate_on_dock screensaver_activate_on_sleep screensaver_enabled" ;;
-        global) keys="hotword_detection_enabled mobile_data_always_on network_recommendations_enabled wifi_scan_always_enabled wifi_badging_thresholds wifi_score_params" ;;
+        global) keys="hotword_detection_enabled mobile_data_always_on network_recommendations_enabled wifi_scan_always_enabled wifi_badging_thresholds wifi_score_params ble_scan_always_enabled" ;;
     esac
 
     for key in $keys; do
@@ -19,7 +19,7 @@ done
 
 # --- Reset Device Config ---
 # activity_manager
-for key in proactive_kills_enabled use_compaction use_oom_re_ranking uses_weight max_phantom_processes use_new_oom_score_adj; do
+for key in proactive_kills_enabled use_compaction use_oom_re_ranking uses_weight max_phantom_processes use_new_oom_score_adj max_cached_processes; do
     echo "Resetting device_config activity_manager: $key"
     device_config delete activity_manager "$key" >/dev/null 2>&1
 done

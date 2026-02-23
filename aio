@@ -115,9 +115,15 @@ io_tune() {
 
         if [ "$MOD_PROFILE" = "performance" ]; then
             write "${queue}nr_requests" "256"
+            # mq-deadline tunables
+            write "${queue}iosched/fifo_batch" "16"
+            write "${queue}iosched/writes_starved" "4"
         else
             write "${queue}nr_requests" "128"
         fi
+
+        # bfq tunables
+        [ -f "${queue}iosched/low_latency" ] && write "${queue}iosched/low_latency" "1"
     done
     log_i "Tweaked I/O parameters ($MOD_PROFILE)"
 }
@@ -218,6 +224,9 @@ vm_lmk_tune() {
     write "${vm}dirty_ratio" "20"
     write "${vm}dirty_background_ratio" "5"
     write "${vm}vfs_cache_pressure" "100"
+    write "${vm}overcommit_memory" "1"
+    write "${vm}page-cluster" "0" # Optimize for ZRAM/SSD
+
     if [ "$MOD_PROFILE" = "battery" ]; then
         write "${vm}swappiness" "100"
     else
@@ -273,6 +282,12 @@ vm_lmk_tune() {
 }
 
 config_tcp() {
+    # Networking: Tune TCP buffer sizes for performance
+    if [ "$MOD_PROFILE" = "performance" ]; then
+        write "${tcp_v4}tcp_rmem" "4096 87380 2097152"
+        write "${tcp_v4}tcp_wmem" "4096 16384 2097152"
+    fi
+
     # Networking: Choose best congestion control available
     avail_con=$(cat "${tcp_v4}tcp_available_congestion_control" 2>/dev/null)
     for con in bbr bbr2 westwood cubic; do
@@ -285,6 +300,18 @@ config_tcp() {
     write "${tcp_v4}tcp_fastopen" "3"
     write "${tcp_v4}tcp_slow_start_after_idle" "0"
     log_i "Applied TCP tweaks"
+}
+
+pewq() {
+    # Power efficient workqueue
+    if [ -e "/sys/module/workqueue/parameters/power_efficient" ]; then
+        if [ "$MOD_PROFILE" = "performance" ]; then
+            write "/sys/module/workqueue/parameters/power_efficient" "N"
+        else
+            write "/sys/module/workqueue/parameters/power_efficient" "Y"
+        fi
+        log_i "Tuned power efficient workqueue ($MOD_PROFILE)"
+    fi
 }
 
 disable_debug() {
@@ -312,5 +339,6 @@ disable_crc
 vm_lmk_tune
 config_tcp
 disable_debug
+pewq
 
 log_i "AIO tweaks application completed."
