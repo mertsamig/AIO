@@ -1,10 +1,14 @@
 #!/system/bin/sh
 
+# MOD_PROFILE: balance, performance, battery
+MOD_PROFILE="balance"
+
 wait_until_login() {
   until [ "$(getprop sys.boot_completed)" -eq 1 ]; do
     sleep 1
   done
 
+  # Ensure the system is ready and we have access to /storage
   test_file="/storage/emulated/0/Android/.PERMISSION_TEST"
   until touch "$test_file" 2>/dev/null; do
     sleep 1
@@ -14,19 +18,26 @@ wait_until_login() {
 
 wait_until_login
 
+# Delay to ensure background services have settled
 sleep 30
 
-#pm disable com.google.android.gms/.analytics.AnalyticsService
-#pm disable com.google.android.gms/com.google.android.gms.mdm.receivers.MdmDeviceAdminReceiver
-#pm disable com.google.android.gms/.nearby.messages.service.NearbyMessagesService
-#pm enable com.google.android.gms/.chimera.GmsIntentOperationService
-
+# Run main optimization scripts
 aio
 debloat
 
-#pm compile -m speed-profile -a
-#pm compile -m speed-profile --secondary-dex -a
-#pm compile --compile-layouts -a
-#pm compile -m speed-profile --full -a
-#pm art dexopt-packages -r bg-dexopt
-#pm art cleanup
+# --- DEX Optimization ---
+# Optimize apps based on the selected profile
+if [ "$MOD_PROFILE" != "battery" ]; then
+    # bg-dexopt-job runs in the background and optimizes apps based on usage
+    cmd package bg-dexopt-job
+
+    if [ "$MOD_PROFILE" = "performance" ]; then
+        # For performance, we can force a more aggressive optimization for the top apps
+        # Note: This can take a long time and consume battery if run too often.
+        # cmd package compile -m speed -a
+        :
+    fi
+fi
+
+# Clean up temporary junk files after boot
+cleantrash
