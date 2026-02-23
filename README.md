@@ -4,15 +4,15 @@ This repository contains a collection of scripts designed to optimize Android sy
 
 ## Features
 
-- **Performance Profiles:** Choose between `balance`, `performance`, and `battery` profiles.
+- **Balanced Optimization:** A single, carefully tuned profile that provides improved responsiveness and system efficiency without excessive battery drain.
 - **Hardware-Aware Tweaks:** Automatically detects and applies tweaks for Qualcomm (Adreno) and MediaTek (MTK) platforms.
 - **Input & Scrolling:** Improved touch responsiveness and faster scrolling velocity.
 - **Memory & LMKD:** zRAM algorithm selection (`zstd`/`lz4`), MGLRU, watermark tuning, and optimized LMKD strategy.
-- **I/O & Networking:** Fine-tuned I/O scheduler parameters and TCP buffer sizes.
+- **I/O & Networking:** Fine-tuned I/O scheduler parameters and TCP congestion control.
 - **DEX Optimization:** Manages background app optimization via `bg-dexopt-job`.
 - **Debloating:** Disables common system bloatware and analytics packages.
 - **Clean Trash:** Automatically removes temporary junk files and app caches on boot.
-- **Reset Module:** A safe way to revert module-applied settings without touching user preferences.
+- **Reset Module:** A way to safely revert module-applied settings without touching user preferences.
 
 ## Scripts
 
@@ -24,19 +24,9 @@ This repository contains a collection of scripts designed to optimize Android sy
 - `dga`: Disables Google Analytics and other tracking components in user apps.
 - `reset_mod`: Reverts tweaks to system defaults.
 
-## How to Configure Profiles
+## Configuration
 
-To change the active profile, you need to edit the `MOD_PROFILE` variable at the top of the following files:
-
-1. `post-fs-data.sh`
-2. `aio`
-3. `service.sh`
-
-### Available Profiles:
-
-- `balance` (Default): A balanced approach between performance and battery life.
-- `performance`: Aggressive tweaks for high performance (gaming), may increase battery consumption.
-- `battery`: Focuses on power saving by reducing system overhead.
+This module is designed to work "out-of-the-box" with a balanced profile. There is no longer a need to manually select between performance or battery profiles; the module applies the most effective tweaks for general usage.
 
 ## Safety & Compatibility
 

@@ -1,8 +1,5 @@
 #!/system/bin/sh
 
-# MOD_PROFILE: balance, performance, battery
-MOD_PROFILE="balance"
-
 klog="/storage/emulated/0/aio/aio.log"
 kdbg="/storage/emulated/0/aio/aio_dbg.log"
 
@@ -76,24 +73,12 @@ stop_services() {
 }
 
 boost_tune() {
-    # Tune or disable various boost mechanisms based on profile
-    local b_val="0"
-    [ "$MOD_PROFILE" = "performance" ] && b_val="1"
+    # Boost mechanisms are generally disabled in balanced profile to save power
+    # while relying on modern scheduler efficiency.
+    write "${kernel}launcher_boost_enabled" "0"
+    write "${kernel}slide_boost_enabled" "0"
 
-    # Qualcomm CPU Boost (CAF)
-    if [ "$IS_QCOM" = "1" ]; then
-        if [ "$MOD_PROFILE" = "performance" ]; then
-            write "/sys/module/cpu_boost/parameters/input_boost_ms" "40"
-        else
-            write "/sys/module/cpu_boost/parameters/input_boost_ms" "0"
-        fi
-        write "/sys/module/cpu_boost/parameters/sched_boost_on_input" "$b_val"
-    fi
-
-    write "${kernel}launcher_boost_enabled" "$b_val"
-    write "${kernel}slide_boost_enabled" "$b_val"
-
-    log_i "Tuned CPU boost mechanisms ($MOD_PROFILE)"
+    log_i "Tuned CPU boost mechanisms (Balanced)"
 }
 
 io_tune() {
@@ -112,46 +97,26 @@ io_tune() {
 
         write "${queue}add_random" "0" # Disable entropy contribution (saves CPU)
         write "${queue}iostats" "0"    # Disable I/O statistics gathering
+        write "${queue}nr_requests" "128" # Balanced value
 
-        if [ "$MOD_PROFILE" = "performance" ]; then
-            write "${queue}nr_requests" "256"
-            # mq-deadline tunables
-            write "${queue}iosched/fifo_batch" "16"
-            write "${queue}iosched/writes_starved" "4"
-        else
-            write "${queue}nr_requests" "128"
-        fi
-
-        # bfq tunables
+        # bfq tunables: enable low latency mode for better UI responsiveness
         [ -f "${queue}iosched/low_latency" ] && write "${queue}iosched/low_latency" "1"
     done
-    log_i "Tweaked I/O parameters ($MOD_PROFILE)"
+    log_i "Tweaked I/O parameters (Balanced)"
 }
 
 cpu_tune() {
-    # Uclamp tuning: improves responsiveness by setting a minimum utilization for top-app tasks
+    # Uclamp tuning: improves responsiveness by setting a small minimum utilization for top-app tasks
     if [ -d "/dev/cpuctl/top-app" ]; then
-        if [ "$MOD_PROFILE" = "performance" ]; then
-            write "/dev/cpuctl/top-app/cpu.uclamp.min" "10"
-        else
-            write "/dev/cpuctl/top-app/cpu.uclamp.min" "1"
-        fi
+        write "/dev/cpuctl/top-app/cpu.uclamp.min" "1"
         write "/dev/cpuctl/top-app/cpu.uclamp.latency_sensitive" "1"
     fi
 
     # Scheduler migration thresholds:
-    # upmigrate: threshold for migrating task to a more powerful CPU
-    # downmigrate: threshold for migrating task to a less powerful CPU
-    if [ "$MOD_PROFILE" = "performance" ]; then
-        write "${kernel}sched_upmigrate" "85"
-        write "${kernel}sched_downmigrate" "65"
-    elif [ "$MOD_PROFILE" = "battery" ]; then
-        write "${kernel}sched_upmigrate" "95"
-        write "${kernel}sched_downmigrate" "85"
-    else
-        write "${kernel}sched_upmigrate" "90"
-        write "${kernel}sched_downmigrate" "75"
-    fi
+    # upmigrate (default ~95): threshold for migrating task to a more powerful CPU. Lower = more aggressive.
+    # downmigrate (default ~85): threshold for migrating task to a less powerful CPU. Lower = more aggressive.
+    write "${kernel}sched_upmigrate" "90"
+    write "${kernel}sched_downmigrate" "75"
 
     # Platform specific CPU tuning
     if [ "$IS_MTK" = "1" ]; then
@@ -174,48 +139,24 @@ cpu_tune() {
             fi
         done
     done
-    log_i "Tweaked CPU governor ($MOD_PROFILE)"
+    log_i "Tweaked CPU governor (Balanced)"
 }
 
 gpu_tune() {
     # Qualcomm Adreno GPU tweaks
     if [ "$IS_QCOM" = "1" ] && [ -d "$gpu" ]; then
-        if [ "$MOD_PROFILE" = "performance" ]; then
-            write "${gpu}devfreq/adrenoboost" "1"
-            write "${gpu}throttling" "0"
-        else
-            write "${gpu}devfreq/adrenoboost" "0"
-            write "${gpu}throttling" "1"
-        fi
-        log_i "Tweaked Adreno GPU parameters ($MOD_PROFILE)"
+        write "${gpu}devfreq/adrenoboost" "0"
+        write "${gpu}throttling" "1"
+        log_i "Tweaked Adreno GPU parameters (Balanced)"
     fi
 }
 
 schedtune_tune() {
     # Schedtune: Task placement and boosting
     if [ -d "$stune" ]; then
-        local fg_boost="1"
-        local ta_boost="1"
-
-        if [ "$MOD_PROFILE" = "performance" ]; then
-            fg_boost="5"
-            ta_boost="10"
-        elif [ "$MOD_PROFILE" = "battery" ]; then
-            fg_boost="0"
-            ta_boost="0"
-        fi
-
-        write "${stune}foreground/schedtune.boost" "$fg_boost"
-        write "${stune}top-app/schedtune.boost" "$ta_boost"
-        log_i "Tweaked Schedtune settings ($MOD_PROFILE)"
-    fi
-}
-
-disable_crc() {
-    # Performance over data integrity: disable CRC check for MMC
-    if [ "$MOD_PROFILE" = "performance" ] && [ -d "/sys/module/mmc_core/" ]; then
-        write "/sys/module/mmc_core/parameters/crc" "N"
-        log_i "Disabled MMC CRC check"
+        write "${stune}foreground/schedtune.boost" "1"
+        write "${stune}top-app/schedtune.boost" "1"
+        log_i "Tweaked Schedtune settings (Balanced)"
     fi
 }
 
@@ -226,12 +167,7 @@ vm_lmk_tune() {
     write "${vm}vfs_cache_pressure" "100"
     write "${vm}overcommit_memory" "1"
     write "${vm}page-cluster" "0" # Optimize for ZRAM/SSD
-
-    if [ "$MOD_PROFILE" = "battery" ]; then
-        write "${vm}swappiness" "100"
-    else
-        write "${vm}swappiness" "60"
-    fi
+    write "${vm}swappiness" "60" # Balanced value
 
     # MGLRU: Greatly improves memory management on modern kernels
     if [ -e "${mm}lru_gen/enabled" ]; then
@@ -240,14 +176,9 @@ vm_lmk_tune() {
 
     write "${vm}compaction_proactiveness" "0"
 
-    # Transparent Hugepages: use madvise for performance, otherwise disable to save RAM
+    # Transparent Hugepages: Disabled in balanced profile to save RAM
     if [ -e "/sys/kernel/mm/transparent_hugepage/enabled" ]; then
-        if [ "$MOD_PROFILE" = "performance" ]; then
-            write "/sys/kernel/mm/transparent_hugepage/enabled" "madvise"
-            write "/sys/kernel/mm/transparent_hugepage/defrag" "madvise"
-        else
-            write "/sys/kernel/mm/transparent_hugepage/enabled" "never"
-        fi
+        write "/sys/kernel/mm/transparent_hugepage/enabled" "never"
     fi
 
     # Watermark tuning to reduce background jitter and direct reclaim
@@ -261,7 +192,6 @@ vm_lmk_tune() {
         avail_algos=$(cat /sys/block/zram0/comp_algorithm 2>/dev/null)
         for algo in zstd lz4 lzo-rle lzo; do
             if echo "$avail_algos" | grep -q "$algo"; then
-                # Some kernels require swapoff before changing algorithm
                 write "/sys/block/zram0/comp_algorithm" "$algo"
                 break
             fi
@@ -269,25 +199,15 @@ vm_lmk_tune() {
         write "/sys/block/zram0/queue/read_ahead_kb" "2048"
     fi
 
-    # KSM (Kernel Samepage Merging): Disable for performance, enable for battery/balance if available
+    # KSM (Kernel Samepage Merging): Enable for RAM saving
     if [ -e "/sys/kernel/mm/ksm/run" ]; then
-        if [ "$MOD_PROFILE" = "performance" ]; then
-            write "/sys/kernel/mm/ksm/run" "0"
-        else
-            write "/sys/kernel/mm/ksm/run" "1"
-        fi
+        write "/sys/kernel/mm/ksm/run" "1"
     fi
 
-    log_i "Tweaked VM and LMK parameters ($MOD_PROFILE)"
+    log_i "Tweaked VM and LMK parameters (Balanced)"
 }
 
 config_tcp() {
-    # Networking: Tune TCP buffer sizes for performance
-    if [ "$MOD_PROFILE" = "performance" ]; then
-        write "${tcp_v4}tcp_rmem" "4096 87380 2097152"
-        write "${tcp_v4}tcp_wmem" "4096 16384 2097152"
-    fi
-
     # Networking: Choose best congestion control available
     avail_con=$(cat "${tcp_v4}tcp_available_congestion_control" 2>/dev/null)
     for con in bbr bbr2 westwood cubic; do
@@ -305,12 +225,8 @@ config_tcp() {
 pewq() {
     # Power efficient workqueue
     if [ -e "/sys/module/workqueue/parameters/power_efficient" ]; then
-        if [ "$MOD_PROFILE" = "performance" ]; then
-            write "/sys/module/workqueue/parameters/power_efficient" "N"
-        else
-            write "/sys/module/workqueue/parameters/power_efficient" "Y"
-        fi
-        log_i "Tuned power efficient workqueue ($MOD_PROFILE)"
+        write "/sys/module/workqueue/parameters/power_efficient" "Y"
+        log_i "Tuned power efficient workqueue (Balanced)"
     fi
 }
 
@@ -326,7 +242,7 @@ disable_debug() {
 }
 
 # Main execution
-log_i "Applying AIO tweaks for profile: $MOD_PROFILE"
+log_i "Applying AIO tweaks (Balanced)"
 sync
 
 stop_services
@@ -335,7 +251,6 @@ io_tune
 cpu_tune
 gpu_tune
 schedtune_tune
-disable_crc
 vm_lmk_tune
 config_tcp
 disable_debug

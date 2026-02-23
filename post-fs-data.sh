@@ -1,6 +1,4 @@
 #!/system/bin/sh
-# MOD_PROFILE: balance, performance, battery
-MOD_PROFILE="balance"
 
 # Get Android Version
 SDK_VERSION=$(getprop ro.build.version.sdk)
@@ -15,60 +13,58 @@ IS_MIUI=$(getprop ro.miui.ui.version.name)
 # settings put global network_recommendations_enabled 0 # Redundant
 # settings put global wifi_scan_always_enabled 0 # User preference
 
-# --- Performance Tweaks ---
-if [ "$MOD_PROFILE" != "battery" ]; then
-    # Disable tracing to reduce system overhead
-    resetprop -n debug.atrace.tags.enableflags 0
-    resetprop -n debug.hwui.skia_atrace_enabled false
+# --- System Performance & Responsiveness ---
+# Disable tracing to reduce system overhead
+resetprop -n debug.atrace.tags.enableflags 0
+resetprop -n debug.hwui.skia_atrace_enabled false
 
-    # Increase priority for camera threads
-    resetprop -n persist.vendor.camera.realtimethread 1
-    # Optimize Skia rendering by reducing task splitting
-    resetprop -n renderthread.skia.reduceopstasksplitting true
+# Increase priority for camera threads
+resetprop -n persist.vendor.camera.realtimethread 1
+# Optimize Skia rendering by reducing task splitting
+resetprop -n renderthread.skia.reduceopstasksplitting true
 
-    # FUSE passthrough: Android 12+ optimization to bypass FUSE daemon for better I/O
-    if [ "$SDK_VERSION" -ge 31 ]; then
-        resetprop -n persist.sys.fuse.passthrough.enable true
-    fi
-
-    # SurfaceFlinger optimizations
-    # Content detection helps in adjusting refresh rate dynamically based on content
-    resetprop -n ro.surface_flinger.use_content_detection_for_refresh_rate true
-    # Vendor specific display optimization
-    resetprop -n vendor.display.enable_optimize_refresh 1
-
-    # ART/Dalvik optimizations
-    resetprop -n dalvik.vm.dex2oat64.enabled true
-    resetprop -n dalvik.vm.dexopt.secondary true
-    resetprop -n dalvik.vm.dex2oat-resolve-startup-strings true
-    # Heap tuning for better GC efficiency
-    resetprop -n dalvik.vm.heapminfree 512k
-    resetprop -n dalvik.vm.heapmaxfree 8m
-    resetprop -n dalvik.vm.heaptargetutilization 0.75
-
-    # Reduce input latency by adjusting latching behavior
-    resetprop -n debug.sf.latch_unsignaled 0
-    resetprop -n debug.sf.auto_latch_unsignaled 1
-
-    # Enable layer command batching and multithreaded present for SurfaceFlinger
-    resetprop -n debug.sf.enable_layer_command_batching true
-    resetprop -n debug.sf.multithreaded_present true
-    # Backpressure reduces UI stuttering by controlling frame production rate
-    resetprop -n debug.sf.enable_gl_backpressure 1
-
-    # LMKD (Low Memory Killer Daemon) tuning
-    # Kill the heaviest task to free up memory faster
-    resetprop -n ro.lmk.kill_heaviest_task true
-    # Decrease kill timeout for faster memory reclamation
-    resetprop -n ro.lmk.kill_timeout_ms 100
-    # Use PSI (Pressure Stall Information) for more accurate memory pressure detection
-    resetprop -n ro.lmk.use_psi true
-
-    # Improve scrolling and touch responsiveness
-    resetprop -n ro.max.fling_velocity 15000
-    resetprop -n ro.min.fling_velocity 8000
-    settings put system windowsmgr.max_events_per_sec 300
+# FUSE passthrough: Android 12+ optimization to bypass FUSE daemon for better I/O
+if [ "$SDK_VERSION" -ge 31 ]; then
+    resetprop -n persist.sys.fuse.passthrough.enable true
 fi
+
+# SurfaceFlinger optimizations
+# Content detection helps in adjusting refresh rate dynamically based on content
+resetprop -n ro.surface_flinger.use_content_detection_for_refresh_rate true
+# Vendor specific display optimization
+resetprop -n vendor.display.enable_optimize_refresh 1
+
+# ART/Dalvik optimizations
+resetprop -n dalvik.vm.dex2oat64.enabled true
+resetprop -n dalvik.vm.dexopt.secondary true
+resetprop -n dalvik.vm.dex2oat-resolve-startup-strings true
+# Heap tuning for better GC efficiency
+resetprop -n dalvik.vm.heapminfree 512k
+resetprop -n dalvik.vm.heapmaxfree 8m
+resetprop -n dalvik.vm.heaptargetutilization 0.75
+
+# Reduce input latency by adjusting latching behavior
+resetprop -n debug.sf.latch_unsignaled 0
+resetprop -n debug.sf.auto_latch_unsignaled 1
+
+# Enable layer command batching and multithreaded present for SurfaceFlinger
+resetprop -n debug.sf.enable_layer_command_batching true
+resetprop -n debug.sf.multithreaded_present true
+# Backpressure reduces UI stuttering by controlling frame production rate
+resetprop -n debug.sf.enable_gl_backpressure 1
+
+# LMKD (Low Memory Killer Daemon) tuning
+# Kill the heaviest task to free up memory faster
+resetprop -n ro.lmk.kill_heaviest_task true
+# Decrease kill timeout for faster memory reclamation
+resetprop -n ro.lmk.kill_timeout_ms 100
+# Use PSI (Pressure Stall Information) for more accurate memory pressure detection
+resetprop -n ro.lmk.use_psi true
+
+# Improve scrolling and touch responsiveness
+resetprop -n ro.max.fling_velocity 15000
+resetprop -n ro.min.fling_velocity 8000
+settings put system windowsmgr.max_events_per_sec 300
 
 # --- MIUI Specific ---
 if [ -n "$IS_MIUI" ]; then
@@ -81,21 +77,11 @@ if [ -n "$IS_MIUI" ]; then
 fi
 
 # --- Device Config / Activity Manager ---
-# Proactive kills: false keeps more apps in RAM, true frees up RAM more aggressively
-if [ "$MOD_PROFILE" != "battery" ]; then
-    device_config put activity_manager proactive_kills_enabled false
-else
-    device_config put activity_manager proactive_kills_enabled true
-    # Limit cached processes for battery saving
-    device_config put activity_manager max_cached_processes 32
-fi
+# Proactive kills: false keeps more apps in RAM
+device_config put activity_manager proactive_kills_enabled false
 
-# App compaction: Saves CPU cycles when disabled, but increases RAM usage
-if [ "$MOD_PROFILE" = "performance" ]; then
-    device_config put activity_manager use_compaction false
-else
-    device_config put activity_manager use_compaction true
-fi
+# App compaction: Enabled for a balanced RAM/CPU usage
+device_config put activity_manager use_compaction true
 
 # Improve OOM management
 device_config put activity_manager use_oom_re_ranking true
@@ -135,11 +121,6 @@ device_config put netd_native sort_nameservers true
 settings put global wifi_badging_thresholds "10:1000,20:2000,30:4000,40:8000,50:16000"
 settings put global wifi_score_params "rssi2=-95:-87:-73:-60,rssi5=-90:-85:-70:-57,rssi6=-90:-85:-70:-57"
 
-if [ "$MOD_PROFILE" = "battery" ]; then
-    settings put global ble_scan_always_enabled 0
-    settings put global wifi_scan_always_enabled 0
-fi
-
 # --- Secure Settings ---
 # Enable system speed mode and disable error reporting
 settings put secure speed_mode_enable 1
@@ -154,11 +135,6 @@ settings put secure screensaver_enabled 0
 # Disable looper statistics gathering
 cmd looper_stats disable
 
-# Set power mode based on profile
-if [ "$MOD_PROFILE" = "performance" ]; then
-    cmd power set-fixed-performance-mode-enabled true
-    cmd power set-mode 1
-else
-    cmd power set-fixed-performance-mode-enabled false
-    cmd power set-mode 0
-fi
+# Set default power mode
+cmd power set-fixed-performance-mode-enabled false
+cmd power set-mode 0
