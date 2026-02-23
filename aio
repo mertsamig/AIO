@@ -124,15 +124,8 @@ cpu_tune() {
 
     # Platform specific CPU tuning
     if [ "$IS_MTK" = "1" ]; then
-        # MediaTek Core Control and FPSGO: specific optimizations for MTK platforms.
-        write "/sys/module/mtk_core_ctl/parameters/policy_enable" "0"
+        # MediaTek FPSGO: specific optimization for MTK platforms.
         write "/sys/kernel/fpsgo/common/fpsgo_enable" "1"
-    fi
-
-    if [ "$IS_QCOM" = "1" ]; then
-        # Qualcomm MSM Thermal: disabling can improve performance but increase heat.
-        # Kept disabled as per original script for maximum performance headroom.
-        write "/sys/module/msm_thermal/parameters/enabled" "N"
     fi
 
     # Set CPU governor to 'schedutil' if available (the modern default for Android).
@@ -174,7 +167,7 @@ vm_lmk_tune() {
     write "${vm}dirty_ratio" "20"
     write "${vm}dirty_background_ratio" "5"
     write "${vm}vfs_cache_pressure" "100" # Balanced pressure on VFS cache.
-    write "${vm}overcommit_memory" "1"     # Allow memory overcommit for better flexibility.
+    write "${vm}overcommit_memory" "0"     # Use standard Android memory overcommit policy.
     write "${vm}page-cluster" "0"          # Reduce read-ahead on swap to optimize for ZRAM latency.
     write "${vm}swappiness" "60"           # Balanced swap priority.
 
@@ -206,7 +199,6 @@ vm_lmk_tune() {
                 break
             fi
         done
-        write "/sys/block/zram0/queue/read_ahead_kb" "2048"
     fi
 
     # KSM (Kernel Samepage Merging): Enable to save RAM by merging identical pages.

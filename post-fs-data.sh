@@ -17,13 +17,6 @@ IS_MIUI=$(getprop ro.miui.ui.version.name)
 # settings put system windowsmgr.max_events_per_sec 300 # Placebo: legacy property from early Android
 
 # --- System Performance & Responsiveness ---
-# Disable tracing to reduce system overhead
-resetprop -n debug.atrace.tags.enableflags 0
-resetprop -n debug.hwui.skia_atrace_enabled false
-
-# Optimize Skia rendering by reducing task splitting
-resetprop -n renderthread.skia.reduceopstasksplitting true
-
 # FUSE passthrough: Android 12+ optimization to bypass FUSE daemon for better I/O
 if [ "$SDK_VERSION" -ge 31 ]; then
     resetprop -n persist.sys.fuse.passthrough.enable true
@@ -36,9 +29,10 @@ resetprop -n ro.surface_flinger.use_content_detection_for_refresh_rate true
 resetprop -n vendor.display.enable_optimize_refresh 1
 
 # ART/Dalvik optimizations
-resetprop -n dalvik.vm.dex2oat64.enabled true
-resetprop -n dalvik.vm.dexopt.secondary true
-resetprop -n dalvik.vm.dex2oat-resolve-startup-strings true
+# Use 64-bit version of dex2oat for better compilation performance (Android 11+)
+if [ "$SDK_VERSION" -ge 30 ]; then
+    resetprop -n dalvik.vm.dex2oat64.enabled true
+fi
 # Heap tuning for better GC efficiency
 resetprop -n dalvik.vm.heapminfree 512k
 resetprop -n dalvik.vm.heapmaxfree 8m
@@ -50,18 +44,13 @@ if [ "$SDK_VERSION" -ge 33 ]; then
     resetprop -n debug.sf.auto_latch_unsignaled 1
 fi
 
-# Enable multithreaded present for SurfaceFlinger
-resetprop -n debug.sf.multithreaded_present true
-# Backpressure reduces UI stuttering by controlling frame production rate
-resetprop -n debug.sf.enable_gl_backpressure 1
+# --- Unproved / Likely Default (Commented Out) ---
+# resetprop -n debug.sf.multithreaded_present true # Unproved
+# resetprop -n debug.sf.enable_gl_backpressure 1 # Likely default on modern devices
 
 # LMKD (Low Memory Killer Daemon) tuning
-# Kill the heaviest task to free up memory faster
+# Kill the heaviest task (best decision) versus any eligible task (fast decision)
 resetprop -n ro.lmk.kill_heaviest_task true
-# Decrease kill timeout for faster memory reclamation
-resetprop -n ro.lmk.kill_timeout_ms 100
-# Use PSI (Pressure Stall Information) for more accurate memory pressure detection
-resetprop -n ro.lmk.use_psi true
 
 # Improve scrolling and touch responsiveness
 resetprop -n ro.max.fling_velocity 15000
