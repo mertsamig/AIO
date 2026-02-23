@@ -1,25 +1,51 @@
-#!/bin/bash
+#!/system/bin/sh
 
-echo "Resetting Android settings..."
-for namespace in global system secure; do
-    echo "Processing namespace: $namespace"
-    settings list "$namespace" | while read line; do
-        key=$(echo "$line" | cut -d= -f1)
+echo "Resetting tweaks applied by the module..."
+
+# --- Reset Settings ---
+# We only reset the keys that this module touches, to avoid breaking user preferences.
+for namespace in system secure global; do
+    case $namespace in
+        system) keys="deviceLevelList miui_app_cache_optimization speed_mode windowsmgr.max_events_per_sec" ;;
+        secure) keys="speed_mode_enable send_action_app_error screensaver_activate_on_dock screensaver_activate_on_sleep screensaver_enabled" ;;
+        global) keys="hotword_detection_enabled mobile_data_always_on network_recommendations_enabled wifi_scan_always_enabled wifi_badging_thresholds wifi_score_params ble_scan_always_enabled" ;;
+    esac
+
+    for key in $keys; do
         echo "Resetting $namespace setting: $key"
-        settings delete "$namespace" "$key"
+        settings delete "$namespace" "$key" >/dev/null 2>&1
     done
 done
 
-echo "Resetting device_config entries..."
+# --- Reset Device Config ---
+# activity_manager
+for key in proactive_kills_enabled use_compaction use_oom_re_ranking uses_weight max_phantom_processes use_new_oom_score_adj max_cached_processes; do
+    echo "Resetting device_config activity_manager: $key"
+    device_config delete activity_manager "$key" >/dev/null 2>&1
+done
 
-namespaces=$(device_config list | cut -d'/' -f1 | sort -u)
-for namespace in $namespaces; do
-    echo "Processing device_config namespace: $namespace"
-    device_config list "$namespace" | while read line; do
-        key=$(echo "$line" | cut -d= -f1)
-        echo "Resetting $namespace configuration: $key"
-        device_config delete "$namespace" "$key"
-    done
+# activity_manager_native_boot
+for key in modern_queue_enabled offload_queue_enabled use_freezer; do
+    echo "Resetting device_config activity_manager_native_boot: $key"
+    device_config delete activity_manager_native_boot "$key" >/dev/null 2>&1
+done
+
+# runtime_native
+for key in usap_pool_enabled use_app_image_startup_cache; do
+    echo "Resetting device_config runtime_native: $key"
+    device_config delete runtime_native "$key" >/dev/null 2>&1
+done
+
+# runtime_native_boot
+for key in enable_generational_cc is_uffd_gc_enabled; do
+    echo "Resetting device_config runtime_native_boot: $key"
+    device_config delete runtime_native_boot "$key" >/dev/null 2>&1
+done
+
+# netd_native
+for key in happy_eyeballs_enable parallel_lookup sort_nameservers; do
+    echo "Resetting device_config netd_native: $key"
+    device_config delete netd_native "$key" >/dev/null 2>&1
 done
 
 echo "Reset process completed."

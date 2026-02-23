@@ -3,39 +3,31 @@
 klog="/storage/emulated/0/aio/aio.log"
 kdbg="/storage/emulated/0/aio/aio_dbg.log"
 
+# Ensure log directory exists
+mkdir -p /storage/emulated/0/aio/
 rm -f "$kdbg" "$klog"
-
 : > "$kdbg"
 : > "$klog"
 
 log_i() {
-	echo "[$(date +%T)]: [*] $1" >> "$klog"
-	echo "" >> "$klog"
+    echo "[$(date +%T)]: [*] $1" >> "$klog"
 }
 
 log_d() {
-	echo "$1" >> "$kdbg"
-	echo "$1"
+    echo "[$(date +%T)]: $1" >> "$kdbg"
 }
 
 log_e() {
-	echo "[!] $1" >> "$kdbg"
-	echo "[!] $1"
+    echo "[$(date +%T)]: [!] $1" >> "$kdbg"
 }
 
 write() {
     local file="$1"
     local value="$2"
-    [[ ! -f "$file" ]] && {
-        log_e "$file doesn't exist"
-        return 1
-    }
+    [[ ! -f "$file" ]] && return 1
     
     if [[ ! -w "$file" ]]; then
-        chmod +w "$file" 2>/dev/null || {
-            log_e "Cannot make $file writable"
-            return 1
-        }
+        chmod +w "$file" 2>/dev/null || return 1
     fi
     
     local curval=$(cat "$file" 2>/dev/null)
@@ -45,505 +37,225 @@ write() {
     }
     
     echo -n "$value" > "$file" 2>/dev/null || {
-        log_e "Failed to write $value to $file (current: $curval)"
+        log_e "Failed to write $value to $file"
         return 1
     }
     
-    chmod -w "$file" 2>/dev/null
     log_d "$file: $curval -> $value"
 }
 
-kill_svc() {
-    local svc="$1"
-	pid=$(pidof "$svc")
-	if [ -n "$pid" ]; then
-		kill -15 $pid
-		sleep 2
-		if kill -0 $pid 2>/dev/null; then
-			kill -9 $pid
-		fi
-	fi
-}
-
-dbg="/sys/kernel/debug/sched_features"
-f2fs="/sys/fs/f2fs/"
-fs="/proc/sys/fs/"
-gpu="/sys/class/kgsl/kgsl-3d0/"
-kdbg="/sdcard/aio/aio_dbg.log"
+# Paths
 kernel="/proc/sys/kernel/"
-klog="/sdcard/aio/aio.log"
-lmk="/sys/module/lowmemorykiller/parameters/"
-stune="/dev/stune/"
 tcp_v4="/proc/sys/net/ipv4/"
 vm="/proc/sys/vm/"
 mm="/sys/kernel/mm/"
+gpu="/sys/class/kgsl/kgsl-3d0/"
+stune="/dev/stune/"
+
+# Hardware detection
+PLATFORM=$(getprop ro.board.platform)
+IS_QCOM=0
+IS_MTK=0
+case "$PLATFORM" in
+    msm*|sdm*|sm*|lahaina|taro|cape|diwali) IS_QCOM=1 ;;
+    mt*|mediatek*) IS_MTK=1 ;;
+esac
 
 stop_services() {
-	services=(
-		"aplogd"
-		"charge_logger"
-		"cnss_diag"
-		"dumpstate"
-		"idd-logreader"
-		"idd-logreadermain"
-		"ipacm-diag"
-		"logcat"
-		"logcatd"
-		"logd"
-		"ramdump"
-		"stats"
-		"statscompanion"
-		"statsd"
-		"subsystem_ramdump"
-		"tcpdump"
-		"tombstoned"
-		"traced"
-		"traced_probes"
-		"vendor.cnss_diag"
-		"vendor.ipacm-diag"
-		"vendor.tcpdump"
-		"wlan_logging"
-		"miuibooster"
-    	"aee.log-1-1"
-    	"vendor_tcpdump"
-    	"emdlogger"
-    	"consyslogger"
-    	"mobile_log_d"
-    	"wifi_dump"
-    	"bt_dump"
-    	"cnss-daemon"
-	)
-	
-	for service in "${services[@]}"; do
-    	kill_svc "$service" &
-	done
-	wait
-	
-	log_i "Disabled few debug services and userspace daemons"
+    # Disable heavy debug and logging services to free up resources.
+    # These services are often used for diagnostics and consume background CPU/RAM.
+    services="aplogd charge_logger cnss_diag dumpstate idd-logreader idd-logreadermain ipacm-diag logcat logcatd logd ramdump stats statscompanion statsd subsystem_ramdump tcpdump tombstoned traced traced_probes vendor.cnss_diag vendor.ipacm-diag vendor.tcpdump wlan_logging miuibooster aee.log-1-1 vendor_tcpdump emdlogger consyslogger mobile_log_d wifi_dump bt_dump cnss-daemon"
+
+    for service in $services; do
+        stop "$service" >/dev/null 2>&1
+        setprop "ctl.stop" "$service"
+    done
+    log_i "Disabled debug services and daemons"
 }
 
 boost_tune() {
-	[[ -e "/sys/module/cpu_boost/parameters/dynamic_stune_boost" ]] && {
-		write "/sys/module/cpu_boost/parameters/dynamic_stune_boost" "0"
-		log_i "Disabled dynamic stune boost"
-	}
-	
-	[[ -d "/sys/module/cpu_boost/" ]] && {
-		write "/sys/module/cpu_boost/parameters/input_boost_ms" "0"
-		write "/sys/module/cpu_boost/parameters/sched_boost_on_input" "0"
-		write "/sys/module/cpu_boost/parameters/sched_boost_on_powerkey_input" "0"
-		write "/sys/module/cpu_boost/parameters/powerkey_input_boost_ms" "0"
-		log_i "Disabled CAF CPU input boost"
-	}
-	
-	[[ -d "/sys/module/cpu_input_boost/" ]] && {
-		write "/sys/module/cpu_input_boost/parameters/input_boost_duration" "0"
-		write "/sys/module/cpu_input_boost/parameters/wake_boost_duration" "0"
-		log_i "Disabled CPU input boost"
-	}
-	
-	write "${kernel}launcher_boost_enabled" "0"
-	write "${kernel}slide_boost_enabled" "0"
-	write "/sys/devices/system/cpu/sched/sched_boost" "0"
-	write "/sys/kernel/tracing/events/sched/sched_boost_cpu" "0"
+    # CPU boost mechanisms are generally disabled to save power,
+    # relying on the efficiency of modern schedulers (PELT/WALT).
+    write "${kernel}launcher_boost_enabled" "0"
+    write "${kernel}slide_boost_enabled" "0"
+
+    log_i "Tuned CPU boost mechanisms (Balanced)"
 }
 
 io_tune() {
-	for queue in /sys/block/*/queue/; do
-		avail_scheds=`cat "${queue}scheduler"`
-		
-		for sched in kyber bfq mq-deadline cfq none noop; do
-			if [[ "$avail_scheds" == *"$sched"* ]]
-			then
-				write "${queue}scheduler" "$sched"
-				break
-			fi
-		done
-		
-		write "${queue}add_random" "0"
-		#write "${queue}io_poll" "0"
-		write "${queue}iostats" "0"
-	done
-	
-	for i in ${f2fs}*/; do
-		write "${i}iostat_enable" "0"
-	done
-	
-	log_i "Tweaked I/O scheduler"
+    # Optimize I/O scheduler and queue parameters for better throughput and lower latency.
+    for queue in /sys/block/*/queue/; do
+        [ ! -d "$queue" ] && continue
+        avail_scheds=$(cat "${queue}scheduler" 2>/dev/null)
+
+        # Prefer modern multiqueue schedulers.
+        # mq-deadline is often best for flash storage.
+        for sched in mq-deadline kyber bfq none; do
+            if echo "$avail_scheds" | grep -q "$sched"; then
+                write "${queue}scheduler" "$sched"
+                break
+            fi
+        done
+
+        write "${queue}add_random" "0" # Disable entropy contribution to save CPU cycles.
+        write "${queue}iostats" "0"    # Disable I/O statistics gathering to reduce overhead.
+        write "${queue}nr_requests" "128" # Balanced value for queue depth.
+
+        # bfq tunables: enable low latency mode for better UI responsiveness when under I/O load.
+        [ -f "${queue}iosched/low_latency" ] && write "${queue}iosched/low_latency" "1"
+    done
+    log_i "Tweaked I/O parameters (Balanced)"
 }
 
 cpu_tune() {
-	write "/sys/module/mtk_core_ctl/parameters/policy_enable" "0"
-    write "/sys/module/msm_thermal/parameters/enabled" "N"
-	write "/sys/module/msm_thermal/core_control/enabled" "0"
-	write "/sys/kernel/msm_thermal/enabled" "0"
-	
-	for core in /sys/devices/system/cpu/cpu*/core_ctl/; do
-		write "${core}enable" "0"
-	done
-	
-	for cpu in /sys/devices/system/cpu/cpu*/cpufreq/; do
-		min_freq=`cat "${cpu}cpuinfo_min_freq"`
-		max_freq=`cat "${cpu}cpuinfo_max_freq"`
-		write "${cpu}scaling_min_freq" "$min_freq"
-		write "${cpu}scaling_max_freq" "$max_freq"
-		avail_scheds=`cat "${cpu}scaling_available_governors"`
-		for sched in sugov_ext schedutil; do
-			if [[ "$avail_scheds" == *"$sched"* ]]
-			then
-				write "${cpu}scaling_governor" "$sched"
-				write "${cpu}${sched}/hispeed_freq" "4294967295"
-				write "${cpu}${sched}/hispeed_load" "90"
-				write "${cpu}${sched}/iowait_boost_enable" "1"
-				write "${cpu}${sched}/pl" "1"
-				break
-			fi
-		done
-	done
-	
-	[[ -e "/sys/devices/system/cpu/cpuidle/use_deepest_state" ]] && {
-		write "/sys/devices/system/cpu/cpuidle/use_deepest_state" "1"
-		log_i "Allowed CPUs to use it's deepest sleep state"
-	}
-	
-	log_i "Tweaked CPU governor"
+    # Uclamp (Utilization Clamping): Improves responsiveness by setting a minimum utilization
+    # for tasks in the 'top-app' group, ensuring they get scheduled on capable CPUs.
+    if [ -d "/dev/cpuctl/top-app" ]; then
+        write "/dev/cpuctl/top-app/cpu.uclamp.min" "1"
+        write "/dev/cpuctl/top-app/cpu.uclamp.latency_sensitive" "1"
+    fi
+
+    # Scheduler migration thresholds:
+    # upmigrate (default ~95): threshold for migrating task to a more powerful CPU. Lower = more aggressive.
+    # downmigrate (default ~85): threshold for migrating task to a less powerful CPU. Lower = more aggressive.
+    # Setting these to slightly lower than default (90/75) improves responsiveness.
+    write "${kernel}sched_upmigrate" "90"
+    write "${kernel}sched_downmigrate" "75"
+
+    # Platform specific CPU tuning
+    if [ "$IS_MTK" = "1" ]; then
+        # MediaTek FPSGO: specific optimization for MTK platforms.
+        write "/sys/kernel/fpsgo/common/fpsgo_enable" "1"
+    fi
+
+    # Set CPU governor to 'schedutil' if available (the modern default for Android).
+    for cpu in /sys/devices/system/cpu/cpu*/cpufreq/; do
+        [ ! -d "$cpu" ] && continue
+        avail_govs=$(cat "${cpu}scaling_available_governors" 2>/dev/null)
+        for gov in schedutil sugov_ext interactive; do
+            if echo "$avail_govs" | grep -q "$gov"; then
+                write "${cpu}scaling_governor" "$gov"
+                break
+            fi
+        done
+    done
+    log_i "Tweaked CPU governor (Balanced)"
 }
 
 gpu_tune() {
-	[[ -d "$gpu" ]] && {
-		write "${gpu}bus_split" "1"
-		write "${gpu}devfreq/adrenoboost" "0"
-		write "${gpu}force_bus_on" "0"
-		write "${gpu}force_clk_on" "0"
-		write "${gpu}force_no_nap" "0"
-		write "${gpu}force_rail_on" "0"
-		write "${gpu}popp" "0"
-		write "${gpu}pwrnap" "1"
-		write "${gpu}thermal_pwrlevel" "0"
-		write "${gpu}throttling" "0"
-		write "${gpu}boost" "0"
-		write "${gpu}cl_boost_disable" "0"
-		
-		log_i "Tweaked GPU parameters"
-	}
-	
-	[[ -d "/sys/module/simple_gpu_algorithm/parameters/" ]] && {
-		write "/sys/module/simple_gpu_algorithm/parameters/simple_gpu_activate" "0"
-		log_i "Disabled SGPU algorithm"
-	}
-	
-	[[ -d "/sys/module/adreno_idler/" ]] && {
-		write "/sys/module/adreno_idler/parameters/adreno_idler_active" "N"
-		log_i "Disabled adreno idler"
-	}
-	
-}
-
-disable_crypto_tests() {
-	[[ -d "/sys/module/cryptomgr/" ]] && {
-		write "/sys/module/cryptomgr/parameters/notests" "Y"
-		log_i "Disabled forced cryptography tests"
-	}
+    # Qualcomm Adreno GPU tweaks:
+    # adrenoboost can improve FPS in games but increases power usage.
+    if [ "$IS_QCOM" = "1" ] && [ -d "$gpu" ]; then
+        write "${gpu}devfreq/adrenoboost" "0"
+        write "${gpu}throttling" "1"
+        log_i "Tweaked Adreno GPU parameters (Balanced)"
+    fi
 }
 
 schedtune_tune() {
-	[[ -d "$stune" ]] && {
-		write "${stune}background/schedtune.boost" "0"
-		write "${stune}background/schedtune.prefer_idle" "0"
-		write "${stune}background/schedtune.sched_boost" "0"
-		write "${stune}camera-daemon/schedtune.boost" "1"
-		write "${stune}camera-daemon/schedtune.prefer_idle" "1"
-		write "${stune}camera-daemon/schedtune.sched_boost" "0"
-		write "${stune}foreground/schedtune.boost" "1"
-		write "${stune}foreground/schedtune.prefer_idle" "0"
-		write "${stune}foreground/schedtune.sched_boost" "0"
-		write "${stune}rt/schedtune.boost" "0"
-		write "${stune}rt/schedtune.prefer_idle" "0"
-		write "${stune}rt/schedtune.sched_boost" "0"
-		write "${stune}schedtune.boost" "0"
-		write "${stune}schedtune.prefer_idle" "0"
-		write "${stune}schedtune.sched_boost" "0"
-		write "${stune}top-app/schedtune.boost" "1"
-		write "${stune}top-app/schedtune.prefer_idle" "1"
-		write "${stune}top-app/schedtune.sched_boost" "0"
-		log_i "Tweaked schedtune settings"
-	}
-}
-
-config_fs() {
-	[[ -d "$fs" ]] && {
-		#write "${fs}dir-notify-enable" "0"
-		write "${fs}lease-break-time" "10"
-		write "${fs}leases-enable" "1"
-		log_i "Tweaked FS"
-	}
-}
-
-config_dyn_fsync() {
-	[[ -d "/sys/kernel/dyn_fsync/" ]] && {
-		write "/sys/kernel/dyn_fsync/Dyn_fsync_active" "Y"
-		log_i "Enabled dynamic fsync"
-	}
-}
-
-disable_crc() {
-	[[ -d "/sys/module/mmc_core/" ]] && {
-		write "/sys/module/mmc_core/parameters/crc" "N"
-		write "/sys/module/mmc_core/parameters/removable" "N"
-		write "/sys/module/mmc_core/parameters/use_spi_crc" "N"
-		log_i "Disabled CRC"
-	}
-}
-
-sched_tune() {
-	write "${kernel}hung_task_timeout_secs" "0"
-	write "${kernel}perf_cpu_time_max_percent" "5"
-	write "${kernel}printk_devkmsg" "off"
-	write "${kernel}sched_autogroup_enabled" "1"
-	write "${kernel}sched_boost" "0"
-	write "${kernel}sched_boost_top_app" "1"
-	write "${kernel}sched_child_runs_first" "0"
-	write "${kernel}sched_conservative_pl" "1"
-	write "${kernel}sched_cstate_aware" "1"
-	write "${kernel}sched_energy_aware" "1"
-	write "${kernel}sched_init_task_load" "20"
-	write "${kernel}sched_initial_task_util" "0"
-	write "${kernel}sched_migration_fixup" "0"
-	write "${kernel}sched_min_task_util_for_boost" "0"
-	write "${kernel}sched_min_task_util_for_colocation" "0"
-	write "${kernel}sched_prefer_sync_wakee_to_waker" "1"
-	write "${kernel}sched_schedstats" "0"
-	write "${kernel}sched_tunable_scaling" "0"
-	write "${kernel}sched_walt_rotate_big_tasks" "1"
-	write "${kernel}timer_migration" "1"
-	write "/proc/sys/dev/tty/ldisc_autoload" "0"
-	write "/sys/devices/system/cpu/cpufreq/hotplug/cpu_hotplug_disable" "1"
-	write "/sys/devices/system/cpu/sched/hint_enable" "0"
-	write "/sys/devices/system/cpu/eas/enable" "1"
-	#write "/sys/devices/system/cpu/perf/enable" "1"
-	write "/sys/kernel/debug/msm_vidc/disable_thermal_mitigation" "0"
-	write "/sys/kernel/rcu_expedited" "0"
-	write "/sys/kernel/rcu_normal" "1"
-	log_i "Tweaked various kernel parameters to a better overall performance"
-}
-
-fp_boost() {
-	[[ -d "/sys/kernel/fp_boost/" ]] && {
-		write "/sys/kernel/fp_boost/enabled" "0"
-		log_i "Disabled fingerprint boost"
-	}
+    # Schedtune: Task placement and boosting via Energy Aware Scheduling (EAS).
+    # Small boosts for foreground and top-app tasks improve perceived smoothness.
+    if [ -d "$stune" ]; then
+        write "${stune}foreground/schedtune.boost" "1"
+        write "${stune}top-app/schedtune.boost" "1"
+        log_i "Tweaked Schedtune settings (Balanced)"
+    fi
 }
 
 vm_lmk_tune() {
-	sync
-	write "${lmk}enable_adaptive_lmk" "0"
-	write "${lmk}lmk_fast_run" "0"
-	write "${lmk}oom_reaper" "1"
-	write "${vm}block_dump" "0"
-	write "${vm}dirty_background_ratio" "10"
-	write "${vm}dirty_expire_centisecs" "3000"
-	write "${vm}dirty_ratio" "30"
-	write "${vm}dirty_writeback_centisecs" "3000"
-	write "${vm}extfrag_threshold" "750"
-	write "${vm}laptop_mode" "0"
-	write "${vm}oom_dump_tasks" "0"
-	write "${vm}overcommit_memory" "1"
-	write "${vm}overcommit_ratio" "100"
-	write "${vm}page-cluster" "2"
-	write "${vm}reap_mem_on_sigkill" "1"
-	write "${vm}stat_interval" "600"
-	write "${vm}vfs_cache_pressure" "100"
-	write "${vm}swappiness" "40"
-	write "${mm}lru_gen/enabled" "Y"
-	write "${mm}lru_gen/min_ttl_ms" "1000"
-	write "${mm}swap/vma_ra_enabled" "true"
-	write "/sys/module/process_reclaim/parameters/enable_process_reclaim" "0"
-	#write "${mm}transparent_hugepage/khugepaged/defrag" "0"
-	#write "${mm}transparent_hugepage/defrag" "never"
-	#write "${mm}transparent_hugepage/enabled" "never"
-	#write "${mm}transparent_hugepage/shmem_enabled" "never"
-	#write "${mm}transparent_hugepage/use_zero_page" "0"
-	write "${vm}compact_unevictable_allowed" "0"
-	write "${vm}compaction_proactiveness" "0"
-	log_i "Tweaked various VM and LMK parameters for a improved user-experience"
-}
+    # Virtual Memory and LMK tuning for better memory management and reduced lag.
+    write "${vm}dirty_ratio" "20"
+    write "${vm}dirty_background_ratio" "5"
+    write "${vm}vfs_cache_pressure" "100" # Balanced pressure on VFS cache.
+    write "${vm}overcommit_memory" "0"     # Use standard Android memory overcommit policy.
+    write "${vm}page-cluster" "0"          # Reduce read-ahead on swap to optimize for ZRAM latency.
+    write "${vm}swappiness" "60"           # Balanced swap priority.
 
-pewq() {
-	[[ -e "/sys/module/workqueue/parameters/power_efficient" ]] && {
-		write "/sys/module/workqueue/parameters/power_efficient" "Y"
-		log_i "Enabled power efficient workqueue"
-	}
+    # MGLRU (Multi-Gen LRU): Greatly improves memory management by identifying "hot" pages more accurately.
+    if [ -e "${mm}lru_gen/enabled" ]; then
+        write "${mm}lru_gen/enabled" "Y"
+    fi
+
+    # Disable proactive compaction to reduce background CPU jitter.
+    write "${vm}compaction_proactiveness" "0"
+
+    # Transparent Hugepages (THP): Disabled to save RAM, as it can cause significant internal fragmentation.
+    if [ -e "/sys/kernel/mm/transparent_hugepage/enabled" ]; then
+        write "/sys/kernel/mm/transparent_hugepage/enabled" "never"
+    fi
+
+    # Watermark tuning:
+    # Disabling watermark boost reduces kswapd wakeups, saving power and reducing jitter.
+    write "${vm}watermark_boost_factor" "0"
+    # watermark_scale_factor: Increase to start background reclaim earlier, avoiding "direct reclaim" lag.
+    write "${vm}watermark_scale_factor" "100"
+
+    # ZRAM optimization: Select the best available compression algorithm for swap performance.
+    if [ -d "/sys/block/zram0" ]; then
+        avail_algos=$(cat /sys/block/zram0/comp_algorithm 2>/dev/null)
+        for algo in zstd lz4 lzo-rle lzo; do
+            if echo "$avail_algos" | grep -q "$algo"; then
+                write "/sys/block/zram0/comp_algorithm" "$algo"
+                break
+            fi
+        done
+    fi
+
+    # KSM (Kernel Samepage Merging): Enable to save RAM by merging identical pages.
+    if [ -e "/sys/kernel/mm/ksm/run" ]; then
+        write "/sys/kernel/mm/ksm/run" "1"
+    fi
+
+    log_i "Tweaked VM and LMK parameters (Balanced)"
 }
 
 config_tcp() {
-	avail_con=`cat "${tcp}tcp_available_congestion_control"`
-	
-	for con in bbr2 bbr c2tcp cdg westwood cubic; do
-		if [[ "$avail_con" == *"$con"* ]]
-		then
-			write "${tcp_v4}tcp_congestion_control" "$con"
-			break
-		fi
-	done
-	
-	write "${tcp_v4}ip_no_pmtu_disc" "0"
-	write "${tcp_v4}tcp_ecn" "1"
-	write "${tcp_v4}tcp_fastopen" "3"
-	write "${tcp_v4}tcp_mtu_probing" "1"
-	write "${tcp_v4}tcp_sack" "1"
-	write "${tcp_v4}tcp_slow_start_after_idle" "0"
-	write "${tcp_v4}tcp_timestamps" "1"
-	write "${tcp_v4}tcp_tw_recycle" "1"
-	write "${tcp_v4}tcp_tw_reuse" "1"
-	write "${tcp_v4}tcp_window_scaling" "1"
-	write "/proc/sys/net/core/netdev_max_backlog" "65536"
-	log_i "Applied TCP tweaks"
+    # Networking: Choose the best available congestion control algorithm (BBR/BBR2 preferred).
+    avail_con=$(cat "${tcp_v4}tcp_available_congestion_control" 2>/dev/null)
+    for con in bbr bbr2 westwood cubic; do
+        if echo "$avail_con" | grep -q "$con"; then
+            write "${tcp_v4}tcp_congestion_control" "$con"
+            break
+        fi
+    done
+
+    write "${tcp_v4}tcp_fastopen" "3"           # Enable TCP Fast Open for both client and server.
+    write "${tcp_v4}tcp_slow_start_after_idle" "0" # Keep congestion window after idle.
+    log_i "Applied TCP tweaks"
 }
 
-kern_pwrsave() {
-	[[ -d "/sys/module/battery_saver/" ]] && {
-		write "/sys/module/battery_saver/parameters/enabled" "N"
-		log_i "Disabled kernel battery saver"
-	}
-}
-
-pm2_idle_mode() {
-	[[ -d "/sys/module/pm2/parameters/" ]] && {
-		write "/sys/module/pm2/parameters/idle_sleep_mode" "Y"
-		log_i "Enabled pm2 idle sleep mode"
-	}
-}
-
-enable_usb_fast_chrg() {
-	[[ -e "/sys/kernel/fast_charge/force_fast_charge" ]] && {
-		write "/sys/kernel/fast_charge/force_fast_charge" "1"
-		log_i "Enabled USB 3.0 fast charging"
-	}
+pewq() {
+    # Power Efficient Workqueue: Improves battery life by allowing workqueues to be power-aware.
+    if [ -e "/sys/module/workqueue/parameters/power_efficient" ]; then
+        write "/sys/module/workqueue/parameters/power_efficient" "Y"
+        log_i "Tuned power efficient workqueue (Balanced)"
+    fi
 }
 
 disable_debug() {
-    useless=(
-        "debug"
-        "compat-log"
-        "debug_level"
-        "debug_mask"
-        "debug_mode"
-        "edac_mc_log"
-        "enable_event_log"
-        "enable_ramdumps"
-        "log_ce"
-        "log_ecn_error"
-        "log_enabled"
-        "log_level"
-        "log_ue"
-        "mballoc_debug"
-        "seclog"
-        "snapshot_crashdumper"
-        "tracing_on"
-    )
-    
-	for keyword in "${useless[@]}"; do
-		for file in $(find /sys/ -type f -name "$keyword"); do
-			write "$file" "0"
-		done
-	done
-	
-	write "${kernel}compat-log" "0"
-	write "${kernel}panic" "0"
-	write "${kernel}panic_on_oops" "0"
-	write "${kernel}printk" "0 0 0 0"
-	write "${kernel}softlockup_panic" "0"
-	write "${vm}panic_on_oom" "0"
-	write "/proc/sys/debug/exception-trace" "0"
-	write "/sys/kernel/debug/debug_enabled" "0"
-	write "/sys/kernel/debug/dri/0/debug/enable" "0"
-	write "/sys/kernel/debug/rpm_log" "0"
-	write "/sys/kernel/debug/sde_rotator0/clk_always_on" "0"
-	write "/sys/kernel/debug/sde_rotator0/evtlog/enable" "0"
-	write "/sys/kernel/printk_mode/printk_mode" "0"
-	write "/sys/module/bluetooth/parameters/disable_ertm" "Y"
-	write "/sys/module/bluetooth/parameters/disable_esco" "Y"
-	write "/sys/module/dwc3/parameters/ep_addr_rxdbg_mask" "0" 
-	write "/sys/module/dwc3/parameters/ep_addr_txdbg_mask" "0"
-	write "/sys/module/hid_apple/parameters/fnmode" "0"
-	write "/sys/module/hid_magicmouse/parameters/emulate_3button" "N"
-	write "/sys/module/hid_magicmouse/parameters/emulate_scroll_wheel" "N"
-	write "/sys/module/logger/parameters/log_mode" "2"
-	write "/sys/module/mdss_fb/parameters/backlight_dimmer" "N"
-	write "/sys/module/otg_wakelock/parameters/enabled" "N" 
-	write "/sys/module/printk/parameters/console_suspend" "Y"
-	write "/sys/module/service_locator/parameters/enable" "0" 
-	write "/sys/module/spurious/parameters/noirqdebug" "Y"
-	log_i "Disabled misc debugging"
+    # Disable kernel logging and various tracers to reduce system overhead and improve security.
+    write "${kernel}printk" "0 0 0 0"
+
+    # Disable scheduler statistics and tracing.
+    write "${kernel}sched_schedstats" "0"
+    write "/sys/kernel/debug/tracing/tracing_on" "0"
+
+    log_i "Disabled various debugging features"
 }
 
-disable_tb() {
-	[[ -e "/sys/module/msm_performance/parameters/touchboost" ]] && {
-		write "/sys/module/msm_performance/parameters/touchboost" "0"
-		log_i "Disabled msm_performance touch boost"
-	} || [[ -e "/sys/power/pnpmgr/touch_boost" ]] && {
-		write "/sys/power/pnpmgr/long_duration_touch_boost" "0"
-		write "/sys/power/pnpmgr/touch_boost" "0"
-		log_i "Disabled pnpmgr touch boost"
-	} || [[ -d "/proc/touch_boost/" ]] && {
-		write "/proc/touch_boost/enable" "0"
-		write "/proc/touch_boost/boost_duration" "0"
-		log_i "Disabled touch boost"
-	}
-}
-
-dexopt() {
-	cmd package bg-dexopt-job
-	#pm compile -m everything -a
-	#pm compile -m everything --secondary-dex -a
-	#pm compile --compile-layouts -a
-
-	#pm compile -m everything --full -a
-	#pm art dexopt-packages -r bg-dexopt
-	#pm art cleanup
-	log_i "Background optimization task executed"
-}
-
-log_i "Initializing"
-init=$(date +%s)
+# Main execution
+log_i "Applying AIO tweaks (Balanced)"
 sync
 
-write "/sys/class/thermal/thermal_message/sconfig" "10"
-write "/sys/kernel/fpsgo/common/fpsgo_enable" "1"
-write "/sys/kernel/fpsgo/minitop/enable" "1"
-write "/sys/kernel/fpsgo/composer/control_hwui" "1"
-write "/sys/kernel/fpsgo/composer/fpsgo_control" "1"
-#for param in adjust_loading boost_affinity boost_LR gcc_hwui_hint d_boost loading_enable perfmgr_enable; do
-#    write "/sys/module/mtk_fpsgo/parameters/$param" "1"
-#done
-#write "/sys/module/ged/parameters/ged_boost_enable" "1"
+stop_services
+boost_tune
+io_tune
+cpu_tune
+gpu_tune
+schedtune_tune
+vm_lmk_tune
+config_tcp
+disable_debug
+pewq
 
-dexopt &
-stop_services &
-disable_crc 
-#disable_crypto_tests 
-config_fs 
-config_dyn_fsync 
-#config_tcp 
-enable_usb_fast_chrg 
-disable_debug 
-io_tune 
-boost_tune 
-cpu_tune 
-gpu_tune 
-schedtune_tune 
-sched_tune 
-vm_lmk_tune 
-pewq 
-disable_tb 
-fp_boost 
-pm2_idle_mode 
-kern_pwrsave
-
-wait
-log_i "Tweaks applied. Enjoy!"
-exit=$(date +%s)
-exec_time=$((exit - init))
-log_i "Spent time: $exec_time seconds."
-exit 0
-
+log_i "AIO tweaks application completed."

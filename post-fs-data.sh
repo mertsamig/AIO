@@ -1,116 +1,130 @@
-resetprop -n debug.atrace.tags.enableflags 0
-resetprop -n debug.hwui.skia_atrace_enabled false
+#!/system/bin/sh
 
-resetprop -n persist.vendor.camera.realtimethread 1
-resetprop -n renderthread.skia.reduceopstasksplitting true
+# Get Android Version
+SDK_VERSION=$(getprop ro.build.version.sdk)
+# Check for MIUI
+IS_MIUI=$(getprop ro.miui.ui.version.name)
 
-#resetprop -n iorapd.perfetto.enable true
-#resetprop -n iorapd.readahead.enable true
-#resetprop -n ro.iorapd.enable true
+# --- Useless / Placebo / Unproved Tweaks (Commented Out) ---
+# resetprop -n iorapd.perfetto.enable true # iorapd is deprecated/removed in newer Android
+# device_config set_sync_disabled_for_tests persistent # Meant for CTS testing, might break sync
+# settings put global hotword_detection_enabled 0 # User preference
+# settings put global mobile_data_always_on 0 # User preference
+# settings put global network_recommendations_enabled 0 # Redundant
+# settings put global wifi_scan_always_enabled 0 # User preference
+# resetprop -n persist.vendor.camera.realtimethread 1 # Unproved: effect on performance is unclear
+# resetprop -n debug.sf.enable_layer_command_batching true # Unproved: may cause rendering issues
+# settings put system windowsmgr.max_events_per_sec 300 # Placebo: legacy property from early Android
 
-resetprop -n persist.sys.fuse.passthrough.enable true
+# --- System Performance & Responsiveness ---
+# FUSE passthrough: Android 12+ optimization to bypass FUSE daemon for better I/O
+if [ "$SDK_VERSION" -ge 31 ]; then
+    resetprop -n persist.sys.fuse.passthrough.enable true
+fi
 
+# SurfaceFlinger optimizations
+# Content detection helps in adjusting refresh rate dynamically based on content
 resetprop -n ro.surface_flinger.use_content_detection_for_refresh_rate true
+# Vendor specific display optimization
 resetprop -n vendor.display.enable_optimize_refresh 1
 
-resetprop -n dalvik.vm.dex2oat64.enabled true
-resetprop -n dalvik.vm.dexopt.secondary true
+# ART/Dalvik optimizations
+# Use 64-bit version of dex2oat for better compilation performance (Android 11+)
+if [ "$SDK_VERSION" -ge 30 ]; then
+    resetprop -n dalvik.vm.dex2oat64.enabled true
+fi
+# Heap tuning for better GC efficiency
+resetprop -n dalvik.vm.heapminfree 512k
+resetprop -n dalvik.vm.heapmaxfree 8m
+resetprop -n dalvik.vm.heaptargetutilization 0.75
 
-#resetprop -n pm.dexopt.secondary everything
-#resetprop -n pm.dexopt.bg-dexopt everything
+# Reduce input latency by adjusting latching behavior (Android 13+)
+if [ "$SDK_VERSION" -ge 33 ]; then
+    resetprop -n debug.sf.latch_unsignaled 0
+    resetprop -n debug.sf.auto_latch_unsignaled 1
+fi
 
-#resetprop -n pm.dexopt.ab-ota everything
-#resetprop -n pm.dexopt.baseline everything
-#resetprop -n pm.dexopt.boot-after-mainline-update everything
-#resetprop -n pm.dexopt.boot-after-ota everything
-#resetprop -n pm.dexopt.cmdline everything
-#resetprop -n pm.dexopt.first-boot everything
-#resetprop -n pm.dexopt.first-use everything
-#resetprop -n pm.dexopt.inactive everything
-#resetprop -n pm.dexopt.install everything
-#resetprop -n pm.dexopt.install-bulk everything
-#resetprop -n pm.dexopt.install-bulk-downgraded everything
-#resetprop -n pm.dexopt.install-bulk-secondary everything
-#resetprop -n pm.dexopt.install-bulk-secondary-downgraded everything
-#resetprop -n pm.dexopt.install-create-dm everything
-#resetprop -n pm.dexopt.install-fast everything
-#resetprop -n pm.dexopt.post-boot everything
-#resetprop -n pm.dexopt.shared everything
+# --- Unproved / Likely Default (Commented Out) ---
+# resetprop -n debug.sf.multithreaded_present true # Unproved
+# resetprop -n debug.sf.enable_gl_backpressure 1 # Likely default on modern devices
 
-resetprop -n debug.sf.latch_unsignaled 0
-resetprop -n debug.sf.auto_latch_unsignaled 1
+# LMKD (Low Memory Killer Daemon) tuning
+# Kill the heaviest task (best decision) versus any eligible task (fast decision)
+resetprop -n ro.lmk.kill_heaviest_task true
 
-resetprop -n sys.miui.ndcd off
+# Improve scrolling and touch responsiveness
+resetprop -n ro.max.fling_velocity 15000
+resetprop -n ro.min.fling_velocity 8000
 
-resetprop -n debug.sf.enable_layer_command_batching true
-resetprop -n debug.sf.multithreaded_present true
+# --- MIUI Specific ---
+if [ -n "$IS_MIUI" ]; then
+    # Disable MIUI network data control daemon to reduce background activity
+    resetprop -n sys.miui.ndcd off
+    # Set device performance level (v:1,c:3,g:3 is high level)
+    settings put system deviceLevelList "v:1,c:3,g:3"
+    # Background blur support for MIUI launcher/system UI
+    resetprop -n persist.sys.background_blur_supported true
+fi
 
-device_config set_sync_disabled_for_tests persistent
-cmd looper_stats disable
-cmd power set-adaptive-power-saver-enabled false
-cmd power set-fixed-performance-mode-enabled false
-cmd power set-mode 0
-#device_config put activity_manager max_cached_processes 65535
-#device_config put activity_manager max_empty_time_millis 43200000
-#device_config put activity_manager max_phantom_processes 2147483647
+# --- Device Config / Activity Manager ---
+# Proactive kills: false keeps more apps in RAM
 device_config put activity_manager proactive_kills_enabled false
-device_config put activity_manager use_compaction false
+
+# App compaction: Enabled for a balanced RAM/CPU usage
+device_config put activity_manager use_compaction true
+
+# Improve OOM management
 device_config put activity_manager use_oom_re_ranking true
 device_config put activity_manager uses_weight true
-device_config put activity_manager_native_boot modern_queue_enabled true
-device_config put activity_manager_native_boot offload_queue_enabled true
-device_config put activity_manager_native_boot use_freezer true
-device_config put clipboard auto_clear_enabled false
-#device_config put media media_metrics_mode 0
-device_config put runtime_native metrics.write-to-statsd false
+# Use new OOM score adjustment logic for better memory management
+device_config put activity_manager use_new_oom_score_adj true
+
+# Modern queue and freezer for better background task management (Android 11+)
+if [ "$SDK_VERSION" -ge 30 ]; then
+    device_config put activity_manager_native_boot modern_queue_enabled true
+    device_config put activity_manager_native_boot offload_queue_enabled true
+    device_config put activity_manager_native_boot use_freezer true
+    # Prevent system from killing background processes (like Termux) aggressively
+    device_config put activity_manager max_phantom_processes 2147483647
+fi
+
+# USAP (Unspecialized App Process) pool for faster app launching
 device_config put runtime_native usap_pool_enabled true
 device_config put runtime_native use_app_image_startup_cache true
-#device_config put runtime_native_boot disable_lock_profiling true
-#device_config put runtime_native_boot enable_generational_cc true
-#device_config put runtime_native_boot enable_perfetto true
-#device_config put runtime_native_boot enable_readahead true
-#device_config put runtime_native_boot enable_uffd_gc_2 true
-#device_config put runtime_native_boot iorap_perfetto_enable true
-#device_config put runtime_native_boot iorap_readahead_enable true
-#device_config put runtime_native_boot is_uffd_gc_enabled true
-device_config put runtime_native_boot pin_camera false
-device_config put odad westworld_logging false
-settings put global hotword_detection_enabled 0
-settings put global mobile_data_always_on 0
-#settings put global netstats_enabled 0
-settings put global network_recommendations_enabled 0
-#settings put global settings_enable_monitor_phantom_procs false
-settings put secure speed_mode_enable 1
-settings put secure screensaver_activate_on_dock 0
-settings put secure screensaver_activate_on_sleep 0 
-settings put secure screensaver_enabled 0
-settings put secure send_action_app_error 0
+resetprop -n dalvik.vm.usap_pool_enabled true
+
+# ART/GC optimizations
+# Generational Concurrent Copying: reduces GC pauses
+device_config put runtime_native_boot enable_generational_cc true
+# Userfaultfd GC: modern GC mechanism (Android 13+)
+if [ "$SDK_VERSION" -ge 33 ]; then
+    device_config put runtime_native_boot is_uffd_gc_enabled true
+fi
+
+# --- Networking ---
+# DNS and IPv4/IPv6 selection optimizations
 device_config put netd_native happy_eyeballs_enable true
 device_config put netd_native parallel_lookup true
 device_config put netd_native sort_nameservers true
-settings put global wifi_scan_always_enabled 0
 
-settings put system deviceLevelList "v:1,c:3,g:3"
-#settings put system miui_app_cache_optimization 0
+# Improve Wi-Fi switching and scoring
+settings put global wifi_badging_thresholds "10:1000,20:2000,30:4000,40:8000,50:16000"
+settings put global wifi_score_params "rssi2=-95:-87:-73:-60,rssi5=-90:-85:-70:-57,rssi6=-90:-85:-70:-57"
 
-resetprop -n dalvik.vm.usap_pool_enabled true
-#resetprop -n vendor.perf.framepacing.enable false
-resetprop -n persist.sys.background_blur_supported true
+# --- Secure Settings ---
+# Enable system speed mode and disable error reporting
+settings put secure speed_mode_enable 1
+settings put secure send_action_app_error 0
 
-#settings put system thermal_limit_refresh_rate 1
-#resetprop -n persist.sys.miui_animator_sched.big_prime_cores 4-7
-#resetprop -n persist.sys.miui_animator_sched.bigcores 4-7
+# Disable screensaver/Daydream to save power/resources
+settings put secure screensaver_activate_on_dock 0
+settings put secure screensaver_activate_on_sleep 0
+settings put secure screensaver_enabled 0
 
-#resetprop -n ro.adb.secure 1
-#resetprop -n ro.debuggable 0
-#resetprop -n ro.force.debuggable 0
-#resetprop -n ro.secure 1
-#resetprop -n ro.boot.selinux enforcing
-#resetprop -n sys.oem_unlock_allowed 0
+# --- Commands ---
+# Disable looper statistics gathering
+cmd looper_stats disable
 
-#resetprop -n ro.zygote.disable_gl_preload 1
-#resetprop -n debug.sf.enable_gl_backpressure 0
-
-#settings put system speed_mode 1
-#resetprop -n persist.sys.mi.prerender 0
-resetprop -n dalvik.vm.dex2oat-resolve-startup-strings true
+# Set default power mode
+cmd power set-fixed-performance-mode-enabled false
+cmd power set-mode 0
