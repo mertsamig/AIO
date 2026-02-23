@@ -51,6 +51,11 @@ if [ "$MOD_PROFILE" != "battery" ]; then
     resetprop -n debug.sf.multithreaded_present true
     # Backpressure reduces UI stuttering by controlling frame production rate
     resetprop -n debug.sf.enable_gl_backpressure 1
+
+    # Improve scrolling and touch responsiveness
+    resetprop -n ro.max.fling_velocity 15000
+    resetprop -n ro.min.fling_velocity 8000
+    settings put system windowsmgr.max_events_per_sec 300
 fi
 
 # --- MIUI Specific ---

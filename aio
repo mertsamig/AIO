@@ -66,7 +66,7 @@ esac
 
 stop_services() {
     # Disable heavy debug and logging services to free up resources
-    services="aplogd charge_logger cnss_diag dumpstate idd-logreader idd-logreadermain ipacm-diag logcat logcatd logd ramdump stats statscompanion statsd subsystem_ramdump tcpdump tombstoned traced traced_probes vendor.cnss_diag vendor.ipacm-diag vendor.tcpdump wlan_logging miuibooster"
+    services="aplogd charge_logger cnss_diag dumpstate idd-logreader idd-logreadermain ipacm-diag logcat logcatd logd ramdump stats statscompanion statsd subsystem_ramdump tcpdump tombstoned traced traced_probes vendor.cnss_diag vendor.ipacm-diag vendor.tcpdump wlan_logging miuibooster aee.log-1-1 vendor_tcpdump emdlogger consyslogger mobile_log_d wifi_dump bt_dump cnss-daemon"
 
     for service in $services; do
         stop "$service" >/dev/null 2>&1
@@ -123,6 +123,16 @@ io_tune() {
 }
 
 cpu_tune() {
+    # Uclamp tuning: improves responsiveness by setting a minimum utilization for top-app tasks
+    if [ -d "/dev/cpuctl/top-app" ]; then
+        if [ "$MOD_PROFILE" = "performance" ]; then
+            write "/dev/cpuctl/top-app/cpu.uclamp.min" "10"
+        else
+            write "/dev/cpuctl/top-app/cpu.uclamp.min" "1"
+        fi
+        write "/dev/cpuctl/top-app/cpu.uclamp.latency_sensitive" "1"
+    fi
+
     # Scheduler migration thresholds:
     # upmigrate: threshold for migrating task to a more powerful CPU
     # downmigrate: threshold for migrating task to a less powerful CPU
@@ -221,14 +231,32 @@ vm_lmk_tune() {
 
     write "${vm}compaction_proactiveness" "0"
 
+    # Transparent Hugepages: use madvise for performance, otherwise disable to save RAM
+    if [ -e "/sys/kernel/mm/transparent_hugepage/enabled" ]; then
+        if [ "$MOD_PROFILE" = "performance" ]; then
+            write "/sys/kernel/mm/transparent_hugepage/enabled" "madvise"
+            write "/sys/kernel/mm/transparent_hugepage/defrag" "madvise"
+        else
+            write "/sys/kernel/mm/transparent_hugepage/enabled" "never"
+        fi
+    fi
+
     # Watermark tuning to reduce background jitter and direct reclaim
     # Disable watermark boosting (reduces kswapd wakeups)
     write "${vm}watermark_boost_factor" "0"
     # Scale factor: increase to start background reclaim earlier (prevents direct reclaim)
     write "${vm}watermark_scale_factor" "100"
 
-    # ZRAM optimization: increase read-ahead to improve performance when accessing swap
+    # ZRAM optimization: selection of faster compression algorithms and read-ahead
     if [ -d "/sys/block/zram0" ]; then
+        avail_algos=$(cat /sys/block/zram0/comp_algorithm 2>/dev/null)
+        for algo in zstd lz4 lzo-rle lzo; do
+            if echo "$avail_algos" | grep -q "$algo"; then
+                # Some kernels require swapoff before changing algorithm
+                write "/sys/block/zram0/comp_algorithm" "$algo"
+                break
+            fi
+        done
         write "/sys/block/zram0/queue/read_ahead_kb" "2048"
     fi
 

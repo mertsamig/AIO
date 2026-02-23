@@ -6,7 +6,7 @@ echo "Resetting tweaks applied by the module..."
 # We only reset the keys that this module touches, to avoid breaking user preferences.
 for namespace in system secure global; do
     case $namespace in
-        system) keys="deviceLevelList miui_app_cache_optimization speed_mode" ;;
+        system) keys="deviceLevelList miui_app_cache_optimization speed_mode windowsmgr.max_events_per_sec" ;;
         secure) keys="speed_mode_enable send_action_app_error screensaver_activate_on_dock screensaver_activate_on_sleep screensaver_enabled" ;;
         global) keys="hotword_detection_enabled mobile_data_always_on network_recommendations_enabled wifi_scan_always_enabled wifi_badging_thresholds wifi_score_params" ;;
     esac
