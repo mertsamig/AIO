@@ -1,0 +1,51 @@
+#!/system/bin/sh
+
+LOG_FILE="/storage/emulated/0/aio/dga.log"
+DBG_LOG_FILE="/storage/emulated/0/aio/dga_dbg.log"
+
+: > "$LOG_FILE"
+: > "$DBG_LOG_FILE"
+
+LOG() { echo "$1" >> "$LOG_FILE"; }
+LOG_D() { echo "[$(date +%T)]: $1" >> "$LOG_FILE"; }
+
+LOG_D "- Searching and disabling useless components; services, receivers, and providers of your apps."
+
+PACKAGES=$(pm list packages | cut -f 2 -d ":")
+
+EXCEPTION_PATTERN="com.whatsapp.crash.upload.ExceptionsUploadService"
+
+KEYWORD_PATTERN="adactivity|analytic|applog|crash|debug|diagnostic|error|logcat|logger|logging|logservice|measure|metric|report|stats|trace|tracing|track|\.ads|admob|com\.my\.target\.|tagmanager|unity|telemetry"
+
+PROCESSED_COUNT=0
+DISABLED_COUNT=0
+
+for package in $PACKAGES; do
+    components=$(dumpsys package "$package" | grep -Ei "$KEYWORD_PATTERN")
+    
+    if [ -n "$components" ]; then
+        while read -r component; do
+            PROCESSED_COUNT=$((PROCESSED_COUNT + 1))
+            component_name=$(echo "$component" | cut -d ' ' -f 2)
+            
+            if [ -n "$component_name" ] && [ "$component_name" != "$EXCEPTION_PATTERN" ]; then
+                if pm disable "$package/$component_name" >/dev/null 2>/dev/null; then
+                    echo "DISABLED: $package/$component_name" >> "$DBG_LOG_FILE"
+                    DISABLED_COUNT=$((DISABLED_COUNT + 1))
+                fi
+            fi
+        done <<< "$components"
+    fi
+done
+
+sync
+
+LOG " "
+LOG_D "- Finished."
+
+LOG " "
+LOG "～～～～～～～～～～～～～～～～～～～～～～～～～"
+LOG "DisableGoogleAnalytics is successfully applied."
+LOG "Total processed components: $PROCESSED_COUNT"
+LOG "Total disabled components: $DISABLED_COUNT"
+LOG "～～～～～～～～～～～～～～～～～～～～～～～～～"
