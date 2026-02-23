@@ -19,7 +19,7 @@ done
 
 # --- Reset Device Config ---
 # activity_manager
-for key in proactive_kills_enabled use_compaction use_oom_re_ranking uses_weight max_phantom_processes; do
+for key in proactive_kills_enabled use_compaction use_oom_re_ranking uses_weight max_phantom_processes use_new_oom_score_adj; do
     echo "Resetting device_config activity_manager: $key"
     device_config delete activity_manager "$key" >/dev/null 2>&1
 done
@@ -34,6 +34,12 @@ done
 for key in usap_pool_enabled use_app_image_startup_cache; do
     echo "Resetting device_config runtime_native: $key"
     device_config delete runtime_native "$key" >/dev/null 2>&1
+done
+
+# runtime_native_boot
+for key in enable_generational_cc is_uffd_gc_enabled; do
+    echo "Resetting device_config runtime_native_boot: $key"
+    device_config delete runtime_native_boot "$key" >/dev/null 2>&1
 done
 
 # netd_native

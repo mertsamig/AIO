@@ -221,6 +221,17 @@ vm_lmk_tune() {
 
     write "${vm}compaction_proactiveness" "0"
 
+    # Watermark tuning to reduce background jitter and direct reclaim
+    # Disable watermark boosting (reduces kswapd wakeups)
+    write "${vm}watermark_boost_factor" "0"
+    # Scale factor: increase to start background reclaim earlier (prevents direct reclaim)
+    write "${vm}watermark_scale_factor" "100"
+
+    # ZRAM optimization: increase read-ahead to improve performance when accessing swap
+    if [ -d "/sys/block/zram0" ]; then
+        write "/sys/block/zram0/queue/read_ahead_kb" "2048"
+    fi
+
     # KSM (Kernel Samepage Merging): Disable for performance, enable for battery/balance if available
     if [ -e "/sys/kernel/mm/ksm/run" ]; then
         if [ "$MOD_PROFILE" = "performance" ]; then

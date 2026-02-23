@@ -81,6 +81,8 @@ fi
 # Improve OOM management
 device_config put activity_manager use_oom_re_ranking true
 device_config put activity_manager uses_weight true
+# Use new OOM score adjustment logic for better memory management
+device_config put activity_manager use_new_oom_score_adj true
 
 # Modern queue and freezer for better background task management (Android 11+)
 if [ "$SDK_VERSION" -ge 30 ]; then
@@ -95,6 +97,14 @@ fi
 device_config put runtime_native usap_pool_enabled true
 device_config put runtime_native use_app_image_startup_cache true
 resetprop -n dalvik.vm.usap_pool_enabled true
+
+# ART/GC optimizations
+# Generational Concurrent Copying: reduces GC pauses
+device_config put runtime_native_boot enable_generational_cc true
+# Userfaultfd GC: modern GC mechanism (Android 13+)
+if [ "$SDK_VERSION" -ge 33 ]; then
+    device_config put runtime_native_boot is_uffd_gc_enabled true
+fi
 
 # --- Networking ---
 # DNS and IPv4/IPv6 selection optimizations
