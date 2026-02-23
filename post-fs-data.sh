@@ -49,6 +49,8 @@ if [ "$MOD_PROFILE" != "battery" ]; then
     # Enable layer command batching and multithreaded present for SurfaceFlinger
     resetprop -n debug.sf.enable_layer_command_batching true
     resetprop -n debug.sf.multithreaded_present true
+    # Backpressure reduces UI stuttering by controlling frame production rate
+    resetprop -n debug.sf.enable_gl_backpressure 1
 fi
 
 # --- MIUI Specific ---
@@ -85,6 +87,8 @@ if [ "$SDK_VERSION" -ge 30 ]; then
     device_config put activity_manager_native_boot modern_queue_enabled true
     device_config put activity_manager_native_boot offload_queue_enabled true
     device_config put activity_manager_native_boot use_freezer true
+    # Prevent system from killing background processes (like Termux) aggressively
+    device_config put activity_manager max_phantom_processes 2147483647
 fi
 
 # USAP (Unspecialized App Process) pool for faster app launching
@@ -97,6 +101,10 @@ resetprop -n dalvik.vm.usap_pool_enabled true
 device_config put netd_native happy_eyeballs_enable true
 device_config put netd_native parallel_lookup true
 device_config put netd_native sort_nameservers true
+
+# Improve Wi-Fi switching and scoring
+settings put global wifi_badging_thresholds "10:1000,20:2000,30:4000,40:8000,50:16000"
+settings put global wifi_score_params "rssi2=-95:-87:-73:-60,rssi5=-90:-85:-70:-57,rssi6=-90:-85:-70:-57"
 
 # --- Secure Settings ---
 # Enable system speed mode and disable error reporting

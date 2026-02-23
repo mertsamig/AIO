@@ -123,6 +123,20 @@ io_tune() {
 }
 
 cpu_tune() {
+    # Scheduler migration thresholds:
+    # upmigrate: threshold for migrating task to a more powerful CPU
+    # downmigrate: threshold for migrating task to a less powerful CPU
+    if [ "$MOD_PROFILE" = "performance" ]; then
+        write "${kernel}sched_upmigrate" "85"
+        write "${kernel}sched_downmigrate" "65"
+    elif [ "$MOD_PROFILE" = "battery" ]; then
+        write "${kernel}sched_upmigrate" "95"
+        write "${kernel}sched_downmigrate" "85"
+    else
+        write "${kernel}sched_upmigrate" "90"
+        write "${kernel}sched_downmigrate" "75"
+    fi
+
     # Platform specific CPU tuning
     if [ "$IS_MTK" = "1" ]; then
         write "/sys/module/mtk_core_ctl/parameters/policy_enable" "0"
@@ -206,6 +220,16 @@ vm_lmk_tune() {
     fi
 
     write "${vm}compaction_proactiveness" "0"
+
+    # KSM (Kernel Samepage Merging): Disable for performance, enable for battery/balance if available
+    if [ -e "/sys/kernel/mm/ksm/run" ]; then
+        if [ "$MOD_PROFILE" = "performance" ]; then
+            write "/sys/kernel/mm/ksm/run" "0"
+        else
+            write "/sys/kernel/mm/ksm/run" "1"
+        fi
+    fi
+
     log_i "Tweaked VM and LMK parameters ($MOD_PROFILE)"
 }
 
@@ -218,7 +242,7 @@ config_tcp() {
             break
         fi
     done
-    
+
     write "${tcp_v4}tcp_fastopen" "3"
     write "${tcp_v4}tcp_slow_start_after_idle" "0"
     log_i "Applied TCP tweaks"
@@ -227,6 +251,11 @@ config_tcp() {
 disable_debug() {
     # Disable kernel logging and various debug masks
     write "${kernel}printk" "0 0 0 0"
+
+    # Disable various tracers and statistics to reduce overhead
+    write "${kernel}sched_schedstats" "0"
+    write "/sys/kernel/debug/tracing/tracing_on" "0"
+
     log_i "Disabled various debugging features"
 }
 
